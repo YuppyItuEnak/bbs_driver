@@ -95,7 +95,7 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       } catch (e) {
-        // logout();
+        logout();
         return false;
       }
     }

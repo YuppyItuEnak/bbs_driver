@@ -1,4 +1,4 @@
-package com.example.bbs_sales_app
+package com.example.bbs_driver
 
 import io.flutter.embedding.android.FlutterActivity
 

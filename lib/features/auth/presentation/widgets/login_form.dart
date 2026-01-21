@@ -1,4 +1,4 @@
-// import 'package:bbs_sales_app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_driver/features/auth/presentation/pages/forget_password.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +14,7 @@ class _LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isPasswordVisible = false; // Untuk fitur toggle mata pada password
 
   @override
   void dispose() {
@@ -24,6 +25,9 @@ class _LoginFormState extends State<LoginForm> {
 
   @override
   Widget build(BuildContext context) {
+    // Definisi warna utama sesuai gambar
+    const Color primaryOrange = Color(0xFFFCAA26);
+
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         return Form(
@@ -31,143 +35,136 @@ class _LoginFormState extends State<LoginForm> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              RichText(
-                text: TextSpan(
-                  text: "Username",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: "*",
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ],
-                ),
+              // --- Field Username ---
+              const Text(
+                "Email / Username",
+                style: TextStyle(fontSize: 14, color: Colors.black54),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _usernameController,
                 decoration: InputDecoration(
-                  hintText: 'Masukkan Username',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  hintText: 'Masukkan email',
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 14,
+                    vertical: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
                 ),
                 validator: (value) => value == null || value.isEmpty
-                    ? 'Please enter your username'
+                    ? 'Username tidak boleh kosong'
                     : null,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
 
-              RichText(
-                text: TextSpan(
-                  text: "Password",
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: "*",
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ],
-                ),
+              // --- Field Password ---
+              const Text(
+                "Password",
+                style: TextStyle(fontSize: 14, color: Colors.black54),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _passwordController,
+                obscureText: !_isPasswordVisible,
                 decoration: InputDecoration(
-                  hintText: 'Masukkan Password',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                  hintText: 'Masukkan password',
+                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off_outlined,
+                      color: Colors.grey[400],
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible;
+                      });
+                    },
                   ),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 14,
+                    vertical: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey[300]!),
                   ),
                 ),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your password';
-                  }
-                  if (value.length < 6) {
-                    return 'Password must be at least 6 characters';
-                  }
-                  return null;
-                },
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Password tidak boleh kosong'
+                    : null,
               ),
 
+              // --- Forget Password (Align Right sesuai gambar) ---
               Align(
-                alignment: Alignment.centerLeft,
+                alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            const ForgetPassword(), // Pastikan nama class halaman register Anda sesuai
+                      ),
+                    );
+                  },
                   child: const Text(
-                    "Lupa password?",
-                    style: TextStyle(color: Colors.black87),
+                    "Forget Password?",
+                    style: TextStyle(
+                      color: primaryOrange,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
+              const SizedBox(height: 30),
 
-              // Error message
+              // --- Error Message dari Provider ---
               if (authProvider.error != null)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 16, top: 4),
-                  child: Text(
-                    authProvider.error!,
-                    style: const TextStyle(color: Colors.red, fontSize: 14),
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Center(
+                    child: Text(
+                      authProvider.error!,
+                      style: const TextStyle(color: Colors.red, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
 
-              // Tombol Login
+              // --- Tombol Login (Style Rounded & Orange) ---
               SizedBox(
                 width: double.infinity,
+                height: 55,
                 child: ElevatedButton(
                   onPressed: authProvider.isLoading
                       ? null
                       : () async {
                           if (_formKey.currentState!.validate()) {
-                            try {
-                              await authProvider.login(
-                                _usernameController.text,
-                                _passwordController.text,
-                              );
-
-                              if (context.mounted &&
-                                  authProvider.error ==
-                                      'User tidak bisa mengakses aplikasi ini') {
-                                // showDialog(
-                                //   context: context,
-                                //   builder: (context) => AlertDialog(
-                                //     title: const Text("Peringatan"),
-                                //     content: const Text(
-                                //         "User tidak bisa mengakses aplikasi ini"),
-                                //     actions: [
-                                //       TextButton(
-                                //           onPressed: () => Navigator.pop(context),
-                                //           child: const Text("OK"))
-                                //     ],
-                                //   ),
-                                // );
-                              }
-                            } catch (_) {}
+                            await authProvider.login(
+                              _usernameController.text,
+                              _passwordController.text,
+                            );
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF595CF6),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: primaryOrange,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(30),
                     ),
                   ),
                   child: authProvider.isLoading
@@ -181,7 +178,11 @@ class _LoginFormState extends State<LoginForm> {
                         )
                       : const Text(
                           "Login",
-                          style: TextStyle(fontSize: 16, color: Colors.white),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                 ),
               ),

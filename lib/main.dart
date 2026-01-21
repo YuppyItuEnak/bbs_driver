@@ -17,7 +17,7 @@ import 'core/widgets/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initializeDateFormatting('id_ID', null);
+  await initializeDateFormatting('id_ID');
 
   runApp(const MyApp());
 }
@@ -58,7 +58,7 @@ class _RootPageState extends State<_RootPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.delayed(const Duration(seconds: 2), () {
       _checkAuth();
     });
   }
