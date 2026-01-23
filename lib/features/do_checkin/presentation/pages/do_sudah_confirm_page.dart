@@ -1,6 +1,11 @@
+import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
+import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/detail_do_page.dart';
+import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 
 class DoSudahConfirmPage extends StatefulWidget {
   const DoSudahConfirmPage({super.key});
@@ -10,27 +15,21 @@ class DoSudahConfirmPage extends StatefulWidget {
 }
 
 class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
-  // Data simulasi untuk list DO yang sudah dikonfirmasi
-  final List<Map<String, String>> _confirmedDoList = [
-    {
-      "customer": "PT. HUTAMA KARYA",
-      "address": "Jl. Candi Lontar II no 48 B",
-      "weight": "78 KG",
-      "date": "04/04/2023",
-    },
-    {
-      "customer": "PT. BUDI JAYA",
-      "address": "Jl. Melati no 60 Kalisari Gresik",
-      "weight": "80 KG",
-      "date": "04/04/2023",
-    },
-    {
-      "customer": "PT. CAHAYA DUNIA",
-      "address": "Jl. Tanah Merah no 79 Kediri",
-      "weight": "60 KG",
-      "date": "04/04/2023",
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final doProvider = context.read<DoProvider>();
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token.toString();
+      final userID = authProvider.user?.id;
+      final userId = userID.toString();
+
+      doProvider.fetchListDOSudahConfirm(token: token, userId: userId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +54,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
       ),
       body: Column(
         children: [
-          // Search Bar
+          // Search Bar (UI TETAP)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Container(
@@ -75,7 +74,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
             ),
           ),
 
-          // Label "Semua"
+          // Label
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Align(
@@ -91,18 +90,37 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
             ),
           ),
 
-          // List Items
+          // LIST DO DARI PROVIDER
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: _confirmedDoList.length,
-              itemBuilder: (context, index) {
-                return _buildDoCard(_confirmedDoList[index]);
+            child: Consumer<DoProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (provider.error != null) {
+                  return Center(child: Text(provider.error!));
+                }
+
+                if (provider.doList.isEmpty) {
+                  return const Center(
+                    child: Text("Tidak ada DO yang sudah dikonfirmasi"),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: provider.doList.length,
+                  itemBuilder: (context, index) {
+                    final doItem = provider.doList[index];
+                    return _buildDoCard(doItem);
+                  },
+                );
               },
             ),
           ),
 
-          // Tombol Lihat Rute (Warna Ungu)
+          // Tombol Lihat Rute (UI TETAP)
           Padding(
             padding: const EdgeInsets.all(20.0),
             child: SizedBox(
@@ -110,8 +128,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
               height: 55,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // Aksi navigasi rute
-                  
+                  // TODO: implement map route
                 },
                 icon: const Icon(Icons.map_outlined, color: Colors.white),
                 label: const Text(
@@ -123,7 +140,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6366F1), // Warna Ungu
+                  backgroundColor: const Color(0xFF6366F1),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -137,16 +154,15 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
     );
   }
 
-  Widget _buildDoCard(Map<String, String> item) {
+  // ================= CARD =================
+
+  Widget _buildDoCard(DeliveryOrderModel item) {
     return GestureDetector(
-      // Tambahkan fungsi navigasi di sini
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const DetailDoPage(
-              isConfirmed: true, // Karena ini di page "Sudah Confirm"
-            ),
+            builder: (context) => const DetailDoPage(isConfirmed: true),
           ),
         );
       },
@@ -169,7 +185,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item['customer']!,
+              item.customer ?? '-',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -178,23 +194,23 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
             ),
             const SizedBox(height: 5),
             Text(
-              item['address']!,
+              item.shipTo ?? '-',
               style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Text(
+                //   "Berat ${item.jurnalAmount ?? '-'} KG",
+                //   style: const TextStyle(
+                //     fontWeight: FontWeight.w500,
+                //     fontSize: 12,
+                //     color: Colors.black54,
+                //   ),
+                // ),
                 Text(
-                  "Berat ${item['weight']}",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
-                    color: Colors.black54,
-                  ),
-                ),
-                Text(
-                  item['date']!,
+                  item.date ?? '-',
                   style: const TextStyle(color: Colors.grey, fontSize: 11),
                 ),
               ],

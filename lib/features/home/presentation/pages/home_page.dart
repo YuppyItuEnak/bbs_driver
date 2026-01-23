@@ -1,5 +1,7 @@
-
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/riwayat_do_page.dart';
+import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
+import 'package:bbs_driver/features/do_checkin/presentation/pages/do_sudah_confirm_page.dart';
+import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
 import 'package:bbs_driver/features/home/presentation/pages/order_page.dart';
 import 'package:bbs_driver/features/notification/presentation/pages/notification_page.dart';
 import 'package:bbs_driver/features/reimburse/presentation/pages/reimburse_page.dart';
@@ -23,7 +25,8 @@ import '../widgets/route_section.dart';
 import '../widgets/target_card.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final bool startAsCheckedIn;
+  const HomePage({super.key, this.startAsCheckedIn = false});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -35,6 +38,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    isCheckedIn = widget.startAsCheckedIn;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AuthProvider>(context, listen: false).fetchUserDetails();
     });
@@ -49,11 +53,8 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // 1. extendBody harus tetap true agar body mengisi ruang di belakang BottomAppBar
       extendBody: true,
-      // 2. Ubah backgroundColor menjadi putih agar area di belakang notch terlihat bersih
       backgroundColor: Colors.white,
-
       bottomNavigationBar: HomeBottomNav(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
@@ -99,7 +100,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Di dalam State class Anda (misal _HomePageState)
-  bool isCheckedIn = false; // Status lokal untuk contoh sederhana
+  late bool isCheckedIn; // Status lokal untuk contoh sederhana
 
   Widget _buildHomeContent(AuthProvider auth) {
     return RefreshIndicator(
@@ -108,7 +109,7 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           children: [
             // Header
-            HomeHeader(userName: auth.user?.name, isCheckedIn: isCheckedIn,),
+            HomeHeader(userName: auth.user?.name),
 
             Transform.translate(
               offset: const Offset(0, -30),
@@ -132,19 +133,22 @@ class _HomePageState extends State<HomePage> {
                           // TOMBOL CHECK IN
                           Expanded(
                             child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  isCheckedIn = true; // Ubah status jadi aktif
+                              onTap: () async {
+                                // Tunggu hasil dari halaman check in
+                                 setState(() {
+                                  isCheckedIn =
+                                      true; // Ubah status jadi non-aktif
                                 });
+
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const DoSudahConfirmPage()));
                               },
                               child: ActionMenuCard(
                                 label: "Check In",
                                 icon: Icons.login_rounded,
-                                // BERUBAH JADI HIJAU JIKA AKTIF
-                                bgColor: isCheckedIn
+                                bgColor: !isCheckedIn
                                     ? const Color(0xFFE8F9EE)
                                     : const Color(0xFFF5F5F5),
-                                iconColor: isCheckedIn
+                                iconColor: !isCheckedIn
                                     ? const Color(0xFF4CAF50)
                                     : const Color(0xFFBDBDBD),
                               ),
@@ -160,15 +164,17 @@ class _HomePageState extends State<HomePage> {
                                   isCheckedIn =
                                       false; // Ubah status jadi non-aktif
                                 });
+
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const DetailDoCheckout()));
                               },
                               child: ActionMenuCard(
                                 label: "Check Out",
                                 icon: Icons.logout_rounded,
                                 // BERUBAH JADI MERAH JIKA AKTIF (isCheckedIn == false)
-                                bgColor: !isCheckedIn
+                                bgColor: isCheckedIn
                                     ? const Color(0xFFFFEBEE)
                                     : const Color(0xFFF5F5F5),
-                                iconColor: !isCheckedIn
+                                iconColor: isCheckedIn
                                     ? const Color(0xFFE53935)
                                     : const Color(0xFFBDBDBD),
                               ),

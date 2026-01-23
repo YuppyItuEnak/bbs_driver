@@ -2,7 +2,7 @@ import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_pag
 import 'package:flutter/material.dart';
 
 class DetailDoPage extends StatefulWidget {
-  final bool isConfirmed; // Parameter untuk menentukan status
+  final bool isConfirmed; 
 
   const DetailDoPage({super.key, this.isConfirmed = true});
 

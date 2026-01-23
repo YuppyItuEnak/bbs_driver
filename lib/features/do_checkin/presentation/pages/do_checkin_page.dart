@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:bbs_driver/features/home/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 // Import file widget yang baru dibuat
@@ -14,6 +15,90 @@ class DoCheckinPage extends StatefulWidget {
 class _DoCheckinPageState extends State<DoCheckinPage> {
   File? _image;
   final ImagePicker _picker = ImagePicker();
+
+  void _showSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User harus menekan tombol untuk keluar
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min, // Dialog mengecil sesuai isi
+              children: [
+                // Ilustrasi (Ganti dengan Image.asset jika sudah ada filenya)
+                Container(
+                  height: 180,
+                  width: 180,
+                  decoration: const BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(
+                        'assets/images/success_illustration.png',
+                      ), // Sesuaikan path asset Anda
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                  // Placeholder jika file gambar belum ada:
+                  // child: const Icon(Icons.check_circle_outline, size: 100, color: Color(0xFFFFB703)),
+                ),
+                const SizedBox(height: 20),
+
+                // Teks Berhasil
+                const Text(
+                  "Check in berhasil!",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2D3142),
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Tombol KEMBALI
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const HomePage(startAsCheckedIn: true),
+                        ),
+                        (route) =>
+                            false, // Menghapus semua tumpukan halaman sebelumnya
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFB703),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      "KEMBALI",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   Future<void> _getImage(ImageSource source) async {
     final XFile? selectedImage = await _picker.pickImage(
@@ -152,7 +237,9 @@ class _DoCheckinPageState extends State<DoCheckinPage> {
                 CheckinItem.actionButton(
                   isActive: _image != null,
                   onPressed: () {
-                    // Logika submit Anda di sini
+                    if (_image != null) {
+                      _showSuccessDialog(context);
+                    }
                   },
                 ),
               ],

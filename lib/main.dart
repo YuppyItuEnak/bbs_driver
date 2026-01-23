@@ -1,3 +1,4 @@
+import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/home/presentation/pages/home_page.dart';
 import 'package:bbs_driver/features/quotation/presentation/providers/product_group_provider.dart';
 import 'package:bbs_driver/features/quotation/presentation/providers/product_provider.dart';
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TopProvider()),
         ChangeNotifierProvider(create: (_) => ProductGroupProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => DoProvider()),
       ],
       child: MaterialApp(
         title: 'MBG QL App',

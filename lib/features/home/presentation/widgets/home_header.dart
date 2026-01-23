@@ -1,18 +1,19 @@
+import 'package:bbs_driver/data/services/delivery_order/do_repository.dart';
 import 'package:bbs_driver/features/auth/presentation/pages/kode_otp.dart';
+import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/do_belum_confirm_page.dart';
-import 'package:bbs_driver/features/deilvery_order/presentation/pages/do_sudah_confirm_page.dart';
+import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
+import 'package:bbs_driver/features/do_checkin/presentation/pages/do_sudah_confirm_page.dart';
 import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class HomeHeader extends StatelessWidget {
   final String? userName;
-  final bool isCheckedIn; // 1. Tambahkan parameter status di sini
 
-  const HomeHeader({
-    super.key,
-    this.userName,
-    required this.isCheckedIn, // 2. Jadikan parameter wajib
-  });
+  const HomeHeader({super.key, this.userName});
 
   @override
   Widget build(BuildContext context) {
@@ -107,9 +108,25 @@ class HomeHeader extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => DetailDoCheckout(),
+                        builder: (context) => DoBelumConfirmPage(),
                       ),
                     );
+
+                    // final repo = DoRepository();
+                    // final authProvider = Provider.of<AuthProvider>(
+                    //   context,
+                    //   listen: false,
+                    // );
+                    // final token = authProvider.token;
+                    // final userID = authProvider.user?.id;
+                    // if (token != null && userID != null) {
+                    //   final result = repo.getListDOSudahConfirm(
+                    //     token: token,
+                    //     userId: userID,
+                    //   );
+
+                    //   print('🚀 DO Sudah Confirm: $result');
+                    // }
                   },
                   borderRadius: BorderRadius.circular(15),
                   child: Container(
@@ -137,16 +154,19 @@ class HomeHeader extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                "Ada 3 DO yang belum dikonfirmasi",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
+                              Consumer<DoProvider>(
+                                builder: (context, doProvider, _) {
+                                  return Text(
+                                    "Ada ${doProvider.totalDoMasuk} DO yang belum dikonfirmasi",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  );
+                                },
                               ),
                               Text(
-                                // 4. LOGIKA TEKS SUBTITLE BERDASARKAN STATUS
                                 "Ketuk untuk konfirmasi",
                                 style: const TextStyle(
                                   color: Colors.white70,
