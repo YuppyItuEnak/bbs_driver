@@ -1,28 +1,17 @@
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/riwayat_do_page.dart';
-import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_sudah_confirm_page.dart';
 import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
-import 'package:bbs_driver/features/home/presentation/pages/order_page.dart';
 import 'package:bbs_driver/features/notification/presentation/pages/notification_page.dart';
 import 'package:bbs_driver/features/reimburse/presentation/pages/reimburse_page.dart';
-import 'package:bbs_driver/features/home/presentation/pages/visit_plan_page.dart';
 import 'package:bbs_driver/features/home/presentation/widgets/action_menu_card.dart';
 import 'package:bbs_driver/features/home/presentation/widgets/reimburse_card.dart';
 import 'package:bbs_driver/features/profile/presentation/pages/profile_page.dart';
-// import 'package:bbs_sales_app/features/home/presentation/pages/order_page.dart';
-// import 'package:bbs_sales_app/features/home/presentation/pages/visit_plan_page.dart';
-// import 'package:bbs_sales_app/features/profile/presentation/pages/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../widgets/activity_section.dart';
-import '../widgets/announcement_section.dart';
 import '../widgets/home_bottom_nav.dart';
 import '../widgets/home_header.dart';
-import '../widgets/info_card.dart';
-import '../widgets/menu_grid.dart';
-import '../widgets/route_section.dart';
-import '../widgets/target_card.dart';
+
 
 class HomePage extends StatefulWidget {
   final bool startAsCheckedIn;
