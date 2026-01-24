@@ -1,4 +1,5 @@
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/riwayat_do_page.dart';
+import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_sudah_confirm_page.dart';
 import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
 import 'package:bbs_driver/features/notification/presentation/pages/notification_page.dart';
@@ -11,7 +12,6 @@ import 'package:provider/provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/home_bottom_nav.dart';
 import '../widgets/home_header.dart';
-
 
 class HomePage extends StatefulWidget {
   final bool startAsCheckedIn;
@@ -28,8 +28,11 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     isCheckedIn = widget.startAsCheckedIn;
+     final token = context.read<AuthProvider>().token;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AuthProvider>(context, listen: false).fetchUserDetails();
+      Provider.of<DoProvider>(context).fetchDoMasuk(token:  token!);
     });
   }
 
@@ -54,6 +57,10 @@ class _HomePageState extends State<HomePage> {
         shape: const CircleBorder(),
         onPressed: () {
           // Aksi untuk tombol tengah
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const DoSudahConfirmPage()),
+          );
         },
         child: const Icon(Icons.location_on, color: Colors.white, size: 30),
       ),
@@ -124,12 +131,10 @@ class _HomePageState extends State<HomePage> {
                             child: GestureDetector(
                               onTap: () async {
                                 // Tunggu hasil dari halaman check in
-                                 setState(() {
+                                setState(() {
                                   isCheckedIn =
                                       true; // Ubah status jadi non-aktif
                                 });
-
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => const DoSudahConfirmPage()));
                               },
                               child: ActionMenuCard(
                                 label: "Check In",
@@ -154,7 +159,13 @@ class _HomePageState extends State<HomePage> {
                                       false; // Ubah status jadi non-aktif
                                 });
 
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => const DetailDoCheckout()));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const DetailDoCheckout(),
+                                  ),
+                                );
                               },
                               child: ActionMenuCard(
                                 label: "Check Out",

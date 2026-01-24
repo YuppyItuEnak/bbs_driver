@@ -29,7 +29,7 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
     final token = authProvider.token;
 
     if (token != null && mounted) {
-      context.read<DoProvider>().fetchDoMasuk(token: token);
+      context.read<DoProvider>().fetchDoMasuk(token: token, isRefresh: true);
     }
   }
 
@@ -329,10 +329,23 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
           Expanded(
             child: GestureDetector(
               onTap: () {
+                final token = context.read<AuthProvider>().token;
+
+                if (token == null || token.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Token tidak ditemukan')),
+                  );
+                  return;
+                }
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const DetailDoPage(isConfirmed: false),
+                    builder: (_) => DetailDoPage(
+                      isConfirmed: false,
+                      doId: item.id,
+                      token: token,
+                    ),
                   ),
                 );
               },

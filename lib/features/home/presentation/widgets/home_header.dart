@@ -156,8 +156,32 @@ class HomeHeader extends StatelessWidget {
                             children: [
                               Consumer<DoProvider>(
                                 builder: (context, doProvider, _) {
+                                  if (doProvider.isLoading) {
+                                    return const Text(
+                                      "Memuat data DO...",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    );
+                                  }
+
+                                  final total = doProvider.totalDoMasuk;
+
+                                  if (total == 0) {
+                                    return const Text(
+                                      "Tidak ada DO yang belum dikonfirmasi",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    );
+                                  }
+
                                   return Text(
-                                    "Ada ${doProvider.totalDoMasuk} DO yang belum dikonfirmasi",
+                                    "Ada $total DO yang belum dikonfirmasi",
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,

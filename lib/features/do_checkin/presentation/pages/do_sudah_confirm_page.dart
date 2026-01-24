@@ -6,7 +6,6 @@ import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_pag
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-
 class DoSudahConfirmPage extends StatefulWidget {
   const DoSudahConfirmPage({super.key});
 
@@ -27,7 +26,11 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
       final userID = authProvider.user?.id;
       final userId = userID.toString();
 
-      doProvider.fetchListDOSudahConfirm(token: token, userId: userId);
+      doProvider.fetchListDOSudahConfirm(
+        token: token,
+        userId: userId,
+        isRefresh: true,
+      );
     });
   }
 
@@ -157,12 +160,13 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
   // ================= CARD =================
 
   Widget _buildDoCard(DeliveryOrderModel item) {
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const DetailDoPage(isConfirmed: true),
+            builder: (context) => const DetailDoPage(isConfirmed: true, doId: '', token: '',),
           ),
         );
       },
