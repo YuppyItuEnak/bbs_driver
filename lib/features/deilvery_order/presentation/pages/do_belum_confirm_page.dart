@@ -17,11 +17,18 @@ class DoBelumConfirmPage extends StatefulWidget {
 
 class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
   final Map<String, bool> _selectedMap = {};
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchData() async {
@@ -189,9 +196,41 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
           }
 
           final doList = provider.doList;
+          final searchQuery = _searchController.text.toLowerCase();
+          final filteredDoList = doList.where((item) {
+            final code = item.code.toLowerCase();
+            final customer = item.customer?.toLowerCase() ?? '';
+            final shipTo = item.shipTo?.toLowerCase() ?? '';
+            final nopol = item.nopol?.toLowerCase() ?? '';
+
+            return code.contains(searchQuery) ||
+                customer.contains(searchQuery) ||
+                shipTo.contains(searchQuery) ||
+                nopol.contains(searchQuery);
+          }).toList();
 
           return Column(
             children: [
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: TextFormField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: "Cari DO...",
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(25),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[200],
+                  ),
+                  onChanged: (value) {
+                    setState(() {});
+                  },
+                ),
+              ),
               const SizedBox(height: 10),
 
               /// HEADER
@@ -213,7 +252,7 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
                     GestureDetector(
                       onTap: () {
                         setState(() {
-                          for (var item in doList) {
+                          for (var item in filteredDoList) {
                             _selectedMap[item.id] = true;
                           }
                         });
@@ -231,9 +270,9 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: doList.length,
+                  itemCount: filteredDoList.length,
                   itemBuilder: (context, index) {
-                    final item = doList[index];
+                    final item = filteredDoList[index];
                     final isSelected = _selectedMap[item.id] ?? false;
 
                     return _buildDoCard(item, isSelected);
@@ -376,6 +415,11 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
                     const SizedBox(height: 4),
                     Text(
                       item.shipTo ?? '-',
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Nopol: ${item.nopol ?? '-'}",
                       style: const TextStyle(color: Colors.grey, fontSize: 11),
                     ),
                   ],

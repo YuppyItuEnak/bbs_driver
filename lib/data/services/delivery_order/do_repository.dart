@@ -20,12 +20,13 @@ class DoRepository {
         'filter_column_is_taken': 'false',
         'page': page.toString(),
         'paginate': paginate.toString(),
+        'include': 'm_customer',
       };
 
       // 🔍 search (opsional)
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
-        queryParams['searchfield'] = 'code,nopol';
+        queryParams['searchfield'] = 'code,nopol,m_customer.name';
       }
 
       final uri = Uri.parse(
