@@ -149,4 +149,31 @@ class DoRepository {
       throw Exception('Error getDetailDo: $e');
     }
   }
+
+  Future<void> confirmDo({
+    required String token,
+    required List<String> doIds,
+    required String userId,
+  }) async {
+    try {
+      for (String doId in doIds) {
+        final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan/$doId');
+        print('Confirming DO ID: $doId');
+        final response = await http.put(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: json.encode({'is_taken': true, 'taken_by': userId}),
+        );
+
+        if (response.statusCode != 200) {
+          throw Exception('Failed to confirm DO $doId: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      throw Exception('Error confirming DOs: $e');
+    }
+  }
 }

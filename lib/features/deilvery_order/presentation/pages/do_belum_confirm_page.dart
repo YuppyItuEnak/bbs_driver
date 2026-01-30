@@ -18,17 +18,31 @@ class DoBelumConfirmPage extends StatefulWidget {
 class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
   final Map<String, bool> _selectedMap = {};
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+    _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token;
+      if (token != null) {
+        context.read<DoProvider>().fetchDoMasuk(token: token);
+      }
+    }
   }
 
   Future<void> _fetchData() async {
@@ -144,9 +158,49 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
                     const SizedBox(width: 15),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showSuccessDialog(context);
+                        onPressed: () async {
+                          final selectedIds = _selectedMap.entries
+                              .where((entry) => entry.value)
+                              .map((entry) => entry.key)
+                              .toList();
+
+                          if (selectedIds.isEmpty) {
+                            Navigator.pop(context); // close dialog
+                            return;
+                          }
+
+                          final doProvider = context.read<DoProvider>();
+                          final authProvider = context.read<AuthProvider>();
+                          final token = authProvider.token;
+                          final userId = authProvider.user?.id;
+
+                          if (token == null || userId == null) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Authentication error."),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            await doProvider.confirmDo(
+                              token: token,
+                              doIds: selectedIds,
+                              userId: userId,
+                            );
+                            Navigator.pop(context); // pop the confirmation dialog
+                            _showSuccessDialog(context);
+                          } catch (e) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content:
+                                    Text("Failed to confirm DOs: ${e.toString()}"),
+                              ),
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFFB703),
@@ -269,9 +323,14 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
               /// LIST
               Expanded(
                 child: ListView.builder(
+                  controller: _scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: filteredDoList.length,
+                  itemCount:
+                      filteredDoList.length + (provider.isFetchingMore ? 1 : 0),
                   itemBuilder: (context, index) {
+                    if (index == filteredDoList.length) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
                     final item = filteredDoList[index];
                     final isSelected = _selectedMap[item.id] ?? false;
 

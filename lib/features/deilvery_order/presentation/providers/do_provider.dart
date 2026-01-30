@@ -147,4 +147,28 @@ class DoProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> confirmDo({
+    required String token,
+    required List<String> doIds,
+    required String userId,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _repository.confirmDo(
+        token: token,
+        doIds: doIds,
+        userId: userId,
+      );
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }
