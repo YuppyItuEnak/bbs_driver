@@ -239,4 +239,53 @@ class DoRepository {
       throw Exception('Error checking in: $e');
     }
   }
+
+  Future<void> checkOut({
+    required String token,
+    required String checkInId,
+    required String doId,
+    required String timeOut,
+    required String latOut,
+    required String longOut,
+    required String addressOut,
+    required String duration,
+    required File photo,
+  }) async {
+    try {
+      // Use checkInId (the t_surat_jalan_realisasi record id) for the API endpoint
+      final uri = Uri.parse(
+        '$baseUrl/dynamic/t_surat_jalan_realisasi/$checkInId',
+      );
+      var request = http.MultipartRequest('PUT', uri);
+      print('Check Out URI: $uri');
+      print('Check In ID: $checkInId');
+      print('DO ID: $doId');
+
+      request.headers['Authorization'] = 'Bearer $token';
+
+      request.fields['t_surat_jalan_id'] = doId;
+      request.fields['time_out'] = timeOut;
+      request.fields['lat_out'] = latOut;
+      request.fields['long_out'] = longOut;
+      request.fields['address_out'] = addressOut;
+      request.fields['durasi'] = duration;
+
+      request.files.add(
+        await http.MultipartFile.fromPath('foto_out', photo.path),
+      );
+
+      var response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+      print('Check Out Response Status: ${response.statusCode}');
+      print('Check Out Response Body: $responseBody');
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception(
+          'Failed to check out: ${response.statusCode} - $responseBody',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error checking out: $e');
+    }
+  }
 }

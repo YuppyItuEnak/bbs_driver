@@ -218,4 +218,40 @@ class DoProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> checkOut({
+    required String token,
+    required String checkInId,
+    required String doId,
+    required String timeOut,
+    required String latOut,
+    required String longOut,
+    required String addressOut,
+    required String duration,
+    required File photo,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _repository.checkOut(
+        token: token,
+        checkInId: checkInId,
+        doId: doId,
+        timeOut: timeOut,
+        latOut: latOut,
+        longOut: longOut,
+        addressOut: addressOut,
+        duration: duration,
+        photo: photo,
+      );
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

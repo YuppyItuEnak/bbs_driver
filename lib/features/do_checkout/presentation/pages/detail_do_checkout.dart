@@ -283,12 +283,37 @@ class _DetailDoCheckoutState extends State<DetailDoCheckout> {
             ),
           ),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => DoCheckoutPage(doId: widget.doId),
-              ),
-            );
+            // Get the check-in record ID from checkInStatus
+            final doProvider = context.read<DoProvider>();
+            final checkInStatus = doProvider.checkInStatus;
+            String? checkInRecordId;
+
+            if (checkInStatus['has_open'] == true) {
+              final data = checkInStatus['data'] as List;
+              for (var item in data) {
+                if (item['t_surat_jalan_id'] == widget.doId &&
+                    item['time_out'] == null) {
+                  checkInRecordId = item['id'];
+                  break;
+                }
+              }
+            }
+
+            if (checkInRecordId != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DoCheckoutPage(
+                    doId: widget.doId,
+                    checkInId: checkInRecordId,
+                  ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Data check-in tidak ditemukan')),
+              );
+            }
           },
           child: const Text(
             'Check Out',
