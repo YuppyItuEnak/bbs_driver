@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class DoCheckoutPage extends StatefulWidget {
-  const DoCheckoutPage({super.key});
+  final String? doId;
+  const DoCheckoutPage({super.key, this.doId});
 
   @override
   State<DoCheckoutPage> createState() => _DoCheckoutPageState();

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_detail.dart';
@@ -74,6 +75,7 @@ class DoRepository {
         'filter_column_taken_by': userId,
         'page': page.toString(),
         'paginate': paginate.toString(),
+        'include': 'm_customer',
       };
 
       // 🔍 optional search
@@ -121,7 +123,8 @@ class DoRepository {
     try {
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan/$doId').replace(
         queryParameters: {
-          'include': 't_surat_jalan_d,t_sales_order,t_surat_jalan_d>m_item',
+          'include':
+              't_surat_jalan_d,t_sales_order,t_surat_jalan_d>m_item,m_customer',
         },
       );
 
@@ -174,6 +177,66 @@ class DoRepository {
       }
     } catch (e) {
       throw Exception('Error confirming DOs: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> checkOpenTimeIn({required String token}) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/fn/t_surat_jalan_realisasi/checkOpenTimeIn',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        print('Check Open Time In Response: $jsonResponse');
+        return jsonResponse;
+      } else {
+        return {'has_open': true, 'total': 0, 'data': []};
+      }
+    } catch (e) {
+      return {'has_open': true, 'total': 0, 'data': []};
+    }
+  }
+
+  Future<void> checkIn({
+    required String token,
+    required String doId,
+    required String timeIn,
+    required String latIn,
+    required String longIn,
+    required String addressIn,
+    required File photo,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan_realisasi');
+      var request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $token';
+
+      request.fields['t_surat_jalan_id'] = doId;
+      request.fields['time_in'] = timeIn;
+      request.fields['lat_in'] = latIn;
+      request.fields['long_in'] = longIn;
+      request.fields['address_in'] = addressIn;
+
+      request.files.add(
+        await http.MultipartFile.fromPath('foto_in', photo.path),
+      );
+
+      var response = await request.send();
+
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception('Failed to check in: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error checking in: $e');
     }
   }
 }

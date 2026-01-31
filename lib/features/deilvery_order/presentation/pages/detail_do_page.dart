@@ -1,4 +1,6 @@
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
+import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
+import 'package:bbs_driver/features/do_checkout/presentation/pages/do_checkout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -19,61 +21,119 @@ class DetailDoPage extends StatefulWidget {
 }
 
 class _DetailDoPageState extends State<DetailDoPage> {
+  bool _hasCheckedIn = false;
+  bool _isButtonDisabled = false;
+
+  bool _hasOpenCheckInForCurrentDo(DoProvider provider) {
+    final checkInStatus = provider.checkInStatus;
+    final data = checkInStatus['data'] as List;
+
+    for (var item in data) {
+      final String apiDoId = item['t_surat_jalan_id']?.toString() ?? '';
+      final String currentDoId = widget.doId.toString();
+
+      if (apiDoId == currentDoId && item['time_out'] == null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _isButtonDisabledCheck(DoProvider provider) {
+    final checkInStatus = provider.checkInStatus;
+    final data = checkInStatus['data'] as List;
+
+    for (var item in data) {
+      if (item['time_out'] == null) {
+        final String apiDoId = item['t_surat_jalan_id']?.toString() ?? '';
+        final String currentDoId = widget.doId.toString();
+
+        if (apiDoId != currentDoId) {
+          return true; // Disable if there's an open check-in for a different DO
+        }
+      }
+    }
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
 
     Future.microtask(() {
-      context.read<DoProvider>().fetchDetailDo(
-            token: widget.token,
-            doId: widget.doId,
-          );
+      final provider = context.read<DoProvider>();
+      provider.fetchDetailDo(token: widget.token, doId: widget.doId);
+      provider.checkOpenTimeIn(token: widget.token).then((_) {
+        if (mounted) {
+          setState(() {
+            _hasCheckedIn = _hasOpenCheckInForCurrentDo(provider);
+            _isButtonDisabled = _isButtonDisabledCheck(provider);
+          });
+        }
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.orange),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Detail DO",
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: Consumer<DoProvider>(
-        builder: (context, provider, _) {
-          // --- LOADING ---
-          if (provider.isLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return Consumer<DoProvider>(
+      builder: (context, provider, _) {
+        // Update hasCheckedIn and isButtonDisabled when provider data changes
+        final hasCheckedIn = _hasOpenCheckInForCurrentDo(provider);
+        final isButtonDisabled = _isButtonDisabledCheck(provider);
+        if (hasCheckedIn != _hasCheckedIn && mounted) {
+          setState(() {
+            _hasCheckedIn = hasCheckedIn;
+          });
+        }
+        if (isButtonDisabled != _isButtonDisabled && mounted) {
+          setState(() {
+            _isButtonDisabled = isButtonDisabled;
+          });
+        }
 
-          // --- ERROR ---
-          if (provider.error != null) {
-            return Center(
-              child: Text(
-                provider.error!,
-                style: const TextStyle(color: Colors.red),
+        // --- LOADING ---
+        if (provider.isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        // --- ERROR ---
+        if (provider.error != null) {
+          return Center(
+            child: Text(
+              provider.error!,
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
+
+        final model = provider.detailDO;
+
+        if (model == null) {
+          return const Center(child: Text("Data tidak ditemukan"));
+        }
+
+        final details = model.details;
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.orange),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: const Text(
+              "Detail DO",
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
               ),
-            );
-          }
-
-          final model = provider.detailDO;
-
-          if (model == null) {
-            return const Center(child: Text("Data tidak ditemukan"));
-          }
-
-          final details = model.details;
-
-          return Column(
+            ),
+            centerTitle: true,
+          ),
+          body: Column(
             children: [
               Expanded(
                 child: SingleChildScrollView(
@@ -86,9 +146,7 @@ class _DetailDoPageState extends State<DetailDoPage> {
                       _buildInfoRow("Tanggal", model.date),
                       _buildInfoRow("Customer", model.customer ?? "-"),
                       _buildInfoRow("Alamat", model.shipTo ?? "-"),
-
                       const SizedBox(height: 30),
-
                       // --- CARD BARANG ---
                       Container(
                         decoration: BoxDecoration(
@@ -124,7 +182,8 @@ class _DetailDoPageState extends State<DetailDoPage> {
                                   Text(
                                     model.salesOrder!.code,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   Text(
                                     model.deliveryArea ?? "",
@@ -136,7 +195,6 @@ class _DetailDoPageState extends State<DetailDoPage> {
                                 ],
                               ),
                             ),
-
                             // --- LIST ITEM ---
                             ListView.separated(
                               shrinkWrap: true,
@@ -147,7 +205,6 @@ class _DetailDoPageState extends State<DetailDoPage> {
                               itemBuilder: (context, index) {
                                 final detail = details[index];
                                 final item = detail.item;
-
                                 return _buildItemRow(
                                   item?.name ?? "-",
                                   "${detail.qty} ${detail.uomUnit}",
@@ -163,7 +220,6 @@ class _DetailDoPageState extends State<DetailDoPage> {
                   ),
                 ),
               ),
-
               // --- BUTTON BOTTOM ---
               Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -171,27 +227,40 @@ class _DetailDoPageState extends State<DetailDoPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: widget.isConfirmed
-                        ? () {
-                            // Navigator.push(
-                            //   context,
-                            //   MaterialPageRoute(
-                            //     builder: (context) => const DoCheckinPage(),
-                            //   ),
-                            // );
-                          }
-                        : null,
+                    onPressed: _isButtonDisabled
+                        ? null
+                        : (_hasCheckedIn
+                              ? () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          DoCheckoutPage(doId: widget.doId),
+                                    ),
+                                  );
+                                }
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          DoCheckinPage(doId: widget.doId),
+                                    ),
+                                  );
+                                }),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: widget.isConfirmed
-                          ? const Color(0xFF4CAF50)
-                          : Colors.grey,
+                      backgroundColor: _isButtonDisabled
+                          ? Colors.grey
+                          : (_hasCheckedIn
+                                ? const Color(0xFFFF9800)
+                                : const Color(0xFF4CAF50)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(25),
                       ),
                       elevation: 0,
                     ),
                     child: Text(
-                      widget.isConfirmed ? "Check In" : "Kembali",
+                      _hasCheckedIn ? "Check Out" : "Check In",
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -202,9 +271,9 @@ class _DetailDoPageState extends State<DetailDoPage> {
                 ),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -238,12 +307,7 @@ class _DetailDoPageState extends State<DetailDoPage> {
     );
   }
 
-  Widget _buildItemRow(
-    String title,
-    String qty,
-    String code,
-    String weight,
-  ) {
+  Widget _buildItemRow(String title, String qty, String code, String weight) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Row(

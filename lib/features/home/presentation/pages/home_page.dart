@@ -28,11 +28,11 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     isCheckedIn = widget.startAsCheckedIn;
-     final token = context.read<AuthProvider>().token;
+    final token = context.read<AuthProvider>().token;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AuthProvider>(context, listen: false).fetchUserDetails();
-      Provider.of<DoProvider>(context).fetchDoMasuk(token:  token!);
+      Provider.of<DoProvider>(context).fetchDoMasuk(token: token!);
     });
   }
 
@@ -159,13 +159,13 @@ class _HomePageState extends State<HomePage> {
                                       false; // Ubah status jadi non-aktif
                                 });
 
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const DetailDoCheckout(),
-                                  ),
-                                );
+                                // Navigator.push(
+                                //   context,
+                                //   // MaterialPageRoute(
+                                //   //   builder: (context) =>
+                                //   //       // const DetailDoCheckout(),
+                                //   // ),
+                                // );
                               },
                               child: ActionMenuCard(
                                 label: "Check Out",

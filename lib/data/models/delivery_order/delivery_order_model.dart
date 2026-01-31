@@ -44,7 +44,7 @@ class DeliveryOrderModel {
       status: json['status'],
       siUsed: json['si_used'] ?? false,
       isTaken: json['is_taken'] ?? false,
-      customer: json['customer'] ?? json['m_customer']?['name'],
+      customer: json['m_customer']['name'],
       shipTo: json['ship_to'],
       deliveryArea: json['delivery_area'],
       vehicle: json['vehicle'],

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_detail.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
 import 'package:bbs_driver/data/services/delivery_order/do_repository.dart';
@@ -19,6 +21,14 @@ class DoProvider extends ChangeNotifier {
 
   String? _searchKeyword;
   String? _error;
+
+  Map<String, dynamic> _checkInStatus = {
+    'has_open': true,
+    'total': 0,
+    'data': [],
+  };
+  Map<String, dynamic> get checkInStatus => _checkInStatus;
+  bool get canCheckIn => _checkInStatus['has_open'] == false;
 
   List<DeliveryOrderModel> get doList => _doList;
   int get totalDoMasuk => _doList.length;
@@ -158,10 +168,47 @@ class DoProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _repository.confirmDo(
+      await _repository.confirmDo(token: token, doIds: doIds, userId: userId);
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> checkOpenTimeIn({required String token}) async {
+    try {
+      _checkInStatus = await _repository.checkOpenTimeIn(token: token);
+    } catch (e) {
+      _checkInStatus = {'has_open': true, 'total': 0, 'data': []};
+    }
+    notifyListeners();
+  }
+
+  Future<void> checkIn({
+    required String token,
+    required String doId,
+    required String timeIn,
+    required String latIn,
+    required String longIn,
+    required String addressIn,
+    required File photo,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _repository.checkIn(
         token: token,
-        doIds: doIds,
-        userId: userId,
+        doId: doId,
+        timeIn: timeIn,
+        latIn: latIn,
+        longIn: longIn,
+        addressIn: addressIn,
+        photo: photo,
       );
     } catch (e) {
       _error = e.toString();

@@ -3,6 +3,7 @@ import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.da
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/detail_do_page.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
+import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -31,6 +32,8 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
         userId: userId,
         isRefresh: true,
       );
+
+      doProvider.checkOpenTimeIn(token: token);
     });
   }
 
@@ -160,15 +163,44 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
   // ================= CARD =================
 
   Widget _buildDoCard(DeliveryOrderModel item) {
-
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const DetailDoPage(isConfirmed: true, doId: '', token: '',),
-          ),
-        );
+        final token = context.read<AuthProvider>().token;
+        if (token == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Authentication token not found.')),
+          );
+          return;
+        }
+
+        final doProvider = context.read<DoProvider>();
+        final checkInStatus = doProvider.checkInStatus;
+        bool shouldGoToCheckout = false;
+        print("ID 1 ${item.id}");
+        print("ID 2 ${checkInStatus['data']}");
+        if (checkInStatus['has_open'] == true) {
+          final data = checkInStatus['data'] as List<dynamic>;
+          shouldGoToCheckout = data.any(
+            (element) => element['t_surat_jalan_id'] == item.id,
+          );
+        }
+
+        if (shouldGoToCheckout) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DetailDoCheckout(doId: item.id, token: token),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  DetailDoPage(isConfirmed: true, doId: item.id, token: token),
+            ),
+          );
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
