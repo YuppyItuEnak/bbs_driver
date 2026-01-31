@@ -254,4 +254,28 @@ class DoProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> updateDoStatus({
+    required String token,
+    required String doId,
+    required int status,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _repository.updateDoStatus(
+        token: token,
+        doId: doId,
+        status: status,
+      );
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

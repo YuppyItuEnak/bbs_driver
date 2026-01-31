@@ -288,4 +288,37 @@ class DoRepository {
       throw Exception('Error checking out: $e');
     }
   }
+
+  Future<void> updateDoStatus({
+    required String token,
+    required String doId,
+    required int status,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan/$doId');
+      print('Update DO Status URI: $uri');
+      print('DO ID: $doId');
+      print('Status: $status');
+
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'status': status}),
+      );
+
+      print('Update Status Response Status: ${response.statusCode}');
+      print('Update Status Response Body: ${response.body}');
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Failed to update DO status: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error updating DO status: $e');
+    }
+  }
 }

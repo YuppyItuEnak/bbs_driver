@@ -384,6 +384,13 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
         photo: _image!,
       );
 
+      // Update status to Received (3) after successful checkout
+      await doProvider.updateDoStatus(
+        token: authProvider.token!,
+        doId: widget.doId,
+        status: 3,
+      );
+
       _showSuccessDialog(context);
     } catch (e) {
       ScaffoldMessenger.of(
