@@ -1,4 +1,5 @@
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/riwayat_do_page.dart';
+import 'package:bbs_driver/features/deilvery_order/presentation/pages/rute_harian_page.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_sudah_confirm_page.dart';
 import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
@@ -27,12 +28,12 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    isCheckedIn = widget.startAsCheckedIn;
     final token = context.read<AuthProvider>().token;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AuthProvider>(context, listen: false).fetchUserDetails();
       Provider.of<DoProvider>(context).fetchDoMasuk(token: token!);
+      Provider.of<DoProvider>(context).checkOpenTimeIn(token: token!);
     });
   }
 
@@ -95,9 +96,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  // Di dalam State class Anda (misal _HomePageState)
-  late bool isCheckedIn; // Status lokal untuk contoh sederhana
-
   Widget _buildHomeContent(AuthProvider auth) {
     return RefreshIndicator(
       onRefresh: () => auth.fetchUserDetails(),
@@ -124,63 +122,89 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Row Check In & Out
-                      Row(
-                        children: [
-                          // TOMBOL CHECK IN
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () async {
-                                // Tunggu hasil dari halaman check in
-                                setState(() {
-                                  isCheckedIn =
-                                      true; // Ubah status jadi non-aktif
-                                });
-                              },
-                              child: ActionMenuCard(
-                                label: "Check In",
-                                icon: Icons.login_rounded,
-                                bgColor: !isCheckedIn
-                                    ? const Color(0xFFE8F9EE)
-                                    : const Color(0xFFF5F5F5),
-                                iconColor: !isCheckedIn
-                                    ? const Color(0xFF4CAF50)
-                                    : const Color(0xFFBDBDBD),
+                      Consumer<DoProvider>(
+                        builder: (context, doProvider, child) {
+                          final canCheckIn = doProvider.canCheckIn;
+                          final hasOpen =
+                              doProvider.checkInStatus['has_open'] == true;
+                          return Row(
+                            children: [
+                              // TOMBOL CHECK IN
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: canCheckIn
+                                      ? () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  const DoSudahConfirmPage(),
+                                            ),
+                                          );
+                                        }
+                                      : null,
+                                  child: ActionMenuCard(
+                                    label: "Check In",
+                                    icon: Icons.login_rounded,
+                                    bgColor: canCheckIn
+                                        ? const Color(0xFFE8F9EE)
+                                        : const Color(0xFFF5F5F5),
+                                    iconColor: canCheckIn
+                                        ? const Color(0xFF4CAF50)
+                                        : const Color(0xFFBDBDBD),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
+                              const SizedBox(width: 16),
 
-                          // TOMBOL CHECK OUT
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  isCheckedIn =
-                                      false; // Ubah status jadi non-aktif
-                                });
-
-                                // Navigator.push(
-                                //   context,
-                                //   // MaterialPageRoute(
-                                //   //   builder: (context) =>
-                                //   //       // const DetailDoCheckout(),
-                                //   // ),
-                                // );
-                              },
-                              child: ActionMenuCard(
-                                label: "Check Out",
-                                icon: Icons.logout_rounded,
-                                // BERUBAH JADI MERAH JIKA AKTIF (isCheckedIn == false)
-                                bgColor: isCheckedIn
-                                    ? const Color(0xFFFFEBEE)
-                                    : const Color(0xFFF5F5F5),
-                                iconColor: isCheckedIn
-                                    ? const Color(0xFFE53935)
-                                    : const Color(0xFFBDBDBD),
+                              // TOMBOL CHECK OUT
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: hasOpen
+                                      ? () {
+                                          // Get the first open check-in's doId
+                                          final data =
+                                              doProvider.checkInStatus['data']
+                                                  as List;
+                                          final openCheckIn = data.firstWhere(
+                                            (element) =>
+                                                element['time_out'] == null,
+                                            orElse: () => null,
+                                          );
+                                          if (openCheckIn != null) {
+                                            final doId =
+                                                openCheckIn['t_surat_jalan_id'];
+                                            final token = context
+                                                .read<AuthProvider>()
+                                                .token;
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    DetailDoCheckout(
+                                                      doId: doId,
+                                                      token: token!,
+                                                    ),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      : null,
+                                  child: ActionMenuCard(
+                                    label: "Check Out",
+                                    icon: Icons.logout_rounded,
+                                    bgColor: hasOpen
+                                        ? const Color(0xFFFFEBEE)
+                                        : const Color(0xFFF5F5F5),
+                                    iconColor: hasOpen
+                                        ? const Color(0xFFE53935)
+                                        : const Color(0xFFBDBDBD),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
+                            ],
+                          );
+                        },
                       ),
                       const SizedBox(height: 30),
 
@@ -202,7 +226,7 @@ class _HomePageState extends State<HomePage> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      const ReimbursePage(), // Pastikan nama class halaman register Anda sesuai
+                                      const ReimbursePage(), 
                                 ),
                               );
                             },

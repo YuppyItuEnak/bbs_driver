@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_detail.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
+import 'package:bbs_driver/data/models/delivery_order/tracking_model.dart';
 import 'package:bbs_driver/data/services/delivery_order/do_repository.dart';
 import 'package:flutter/material.dart';
 
@@ -27,6 +28,8 @@ class DoProvider extends ChangeNotifier {
     'total': 0,
     'data': [],
   };
+  List<TrackingModel> _trackingList = [];
+  List<TrackingModel> get trackingList => _trackingList;
   Map<String, dynamic> get checkInStatus => _checkInStatus;
   bool get canCheckIn => _checkInStatus['has_open'] == false;
 
@@ -110,6 +113,59 @@ class DoProvider extends ChangeNotifier {
 
     try {
       final newDoList = await _repository.getListDOSudahConfirm(
+        token: token,
+        userId: userId,
+        page: _page,
+        paginate: _paginate,
+        search: _searchKeyword,
+      );
+
+      // kalau data < paginate → berarti halaman terakhir
+      if (newDoList.length < _paginate) {
+        _hasMore = false;
+      }
+
+      if (isRefresh) {
+        _doList = newDoList;
+      } else {
+        _doList.addAll(newDoList);
+      }
+
+      _page++;
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      if (isRefresh) {
+        _isLoading = false;
+      } else {
+        _isFetchingMore = false;
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchListDOSudahReceived({
+    required String token,
+    required String userId,
+    bool isRefresh = false,
+    String? search,
+  }) async {
+    if (isRefresh) {
+      _page = 1;
+      _hasMore = true;
+      _doList = [];
+      _isLoading = true;
+      _searchKeyword = search;
+    } else {
+      if (_isFetchingMore || !_hasMore) return;
+      _isFetchingMore = true;
+    }
+
+    _error = null;
+    notifyListeners();
+
+    try {
+      final newDoList = await _repository.getListDOSudahReceived(
         token: token,
         userId: userId,
         page: _page,
@@ -270,6 +326,22 @@ class DoProvider extends ChangeNotifier {
         doId: doId,
         status: status,
       );
+    } catch (e) {
+      _error = e.toString();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchTodayTracking({required String token}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      _trackingList = await _repository.getTodayTracking(token: token);
     } catch (e) {
       _error = e.toString();
       rethrow;

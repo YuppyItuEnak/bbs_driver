@@ -1,4 +1,4 @@
-import 'package:bbs_driver/features/reimburse/presentation/pages/ajukan_reimburse_page.dart';
+import 'package:bbs_driver/features/reimburse/presentation/pages/detail_reimburse_page.dart';
 import 'package:bbs_driver/features/reimburse/presentation/widget/reimburse_card_item.dart';
 import 'package:flutter/material.dart';
 
@@ -86,7 +86,7 @@ class _ReimbursePageState extends State<ReimbursePage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          const AjukanReimbursePage(), // Pastikan nama class halaman register Anda sesuai
+                          const DetailReimbursePage(reimburseId: '',), // Pastikan nama class halaman register Anda sesuai
                     ),
                   );
                 },

@@ -1,5 +1,10 @@
+import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
+import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_driver/features/deilvery_order/presentation/pages/detail_do_page.dart';
+import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/widgets/sort_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class RiwayatDoPage extends StatefulWidget {
   const RiwayatDoPage({super.key});
@@ -10,39 +15,24 @@ class RiwayatDoPage extends StatefulWidget {
 
 class _RiwayatDoPageState extends State<RiwayatDoPage> {
   String currentSort = 'Terbaru - Terlama';
-  // Data dummy untuk list
-  final List<Map<String, String>> riwayatData = [
-    {
-      "nama": "PT. HUTAMA KARYA",
-      "alamat": "Jl. Candi Lontar II No. 48 B",
-      "status": "Terkirim",
-    },
-    {
-      "nama": "PT. BUDI JAYA",
-      "alamat": "Jl. Melati no 60 Kalisari Gresik",
-      "status": "",
-    },
-    {
-      "nama": "PT. CAHAYA DUNIA",
-      "alamat": "Jl. Tanah Merah no 79 Kediri",
-      "status": "",
-    },
-    {
-      "nama": "PT. ABADI SENTOSA",
-      "alamat": "Jl. Rajawali VI no 114 Surabaya",
-      "status": "",
-    },
-    {
-      "nama": "PT. BUDI JAYA",
-      "alamat": "Jl. Melati no 60 Kalisari Gresik",
-      "status": "",
-    },
-    {
-      "nama": "PT. CAHAYA DUNIA",
-      "alamat": "Jl. Tanah Merah no 79 Kediri",
-      "status": "",
-    },
-  ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final doProvider = context.read<DoProvider>();
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.token.toString();
+      final userID = authProvider.user?.id;
+      final userId = userID.toString();
+
+      doProvider.fetchListDOSudahReceived(
+        token: token,
+        userId: userId,
+        isRefresh: true,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,12 +108,28 @@ class _RiwayatDoPageState extends State<RiwayatDoPage> {
 
           // List Riwayat
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: riwayatData.length,
-              itemBuilder: (context, index) {
-                final item = riwayatData[index];
-                return _buildRiwayatCard(item);
+            child: Consumer<DoProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (provider.error != null) {
+                  return Center(child: Text(provider.error!));
+                }
+
+                if (provider.doList.isEmpty) {
+                  return const Center(child: Text("Tidak ada riwayat DO"));
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: provider.doList.length,
+                  itemBuilder: (context, index) {
+                    final item = provider.doList[index];
+                    return _buildRiwayatCard(item);
+                  },
+                );
               },
             ),
           ),
@@ -132,51 +138,66 @@ class _RiwayatDoPageState extends State<RiwayatDoPage> {
     );
   }
 
-  Widget _buildRiwayatCard(Map<String, String> data) {
-    bool isTerkirim = data["status"] == "Terkirim";
+  Widget _buildRiwayatCard(DeliveryOrderModel item) {
+    return GestureDetector(
+      onTap: () {
+        final token = context.read<AuthProvider>().token;
+        if (token == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Authentication token not found.')),
+          );
+          return;
+        }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          // Ikon Dokumen
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.description_outlined,
-              color: Colors.grey.shade400,
-            ),
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                DetailDoPage(isConfirmed: true, doId: item.id, token: token),
           ),
-          const SizedBox(width: 15),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 15),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          children: [
+            // Ikon Dokumen
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.description_outlined,
+                color: Colors.grey.shade400,
+              ),
+            ),
+            const SizedBox(width: 15),
 
-          // Informasi Teks
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  data["nama"]!,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+            // Informasi Teks
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.customer ?? '-',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  data["alamat"]!,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                ),
-                if (isTerkirim) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.shipTo ?? '-',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -187,7 +208,7 @@ class _RiwayatDoPageState extends State<RiwayatDoPage> {
                       color: const Color(0xFFE8F9EE),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: const Color(0xFF4CAF50).withOpacity(0.3),
+                        color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
                       ),
                     ),
                     child: const Text(
@@ -200,10 +221,10 @@ class _RiwayatDoPageState extends State<RiwayatDoPage> {
                     ),
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

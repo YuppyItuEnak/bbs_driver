@@ -1,6 +1,7 @@
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/detail_do_page.dart';
+import 'package:bbs_driver/features/deilvery_order/presentation/pages/rute_harian_page.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
 import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
@@ -134,7 +135,14 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
               height: 55,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  // TODO: implement map route
+                  final token = context.read<AuthProvider>().token.toString();
+                  context.read<DoProvider>().fetchTodayTracking(token: token);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RuteHarianPage(token: token),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.map_outlined, color: Colors.white),
                 label: const Text(

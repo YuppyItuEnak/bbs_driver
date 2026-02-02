@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_detail.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
+import 'package:bbs_driver/data/models/delivery_order/tracking_model.dart';
 import 'package:http/http.dart' as http;
 
 class DoRepository {
@@ -70,6 +71,62 @@ class DoRepository {
     try {
       final Map<String, String> queryParams = {
         'filter_column_status': '2', // posted
+        'filter_column_si_used': 'false',
+        'filter_column_is_taken': 'true',
+        'filter_column_taken_by': userId,
+        'page': page.toString(),
+        'paginate': paginate.toString(),
+        'include': 'm_customer',
+      };
+
+      // 🔍 optional search
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+        queryParams['searchfield'] = 'code,nopol';
+      }
+
+      final uri = Uri.parse(
+        '$baseUrl/dynamic/t_surat_jalan',
+      ).replace(queryParameters: queryParams);
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('📥 DO sudah confirm URI: $uri');
+      print('📥 DO sudah confirm Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final List data = jsonResponse['data'];
+
+        return data
+            .map<DeliveryOrderModel>((e) => DeliveryOrderModel.fromJson(e))
+            .toList();
+      } else {
+        throw Exception(
+          'Failed get DO sudah confirm list: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error getListDOSudahConfirm: $e');
+    }
+  }
+
+  Future<List<DeliveryOrderModel>> getListDOSudahReceived({
+    required String token,
+    required String userId,
+    String? search,
+    int page = 1,
+    int paginate = 10,
+  }) async {
+    try {
+      final Map<String, String> queryParams = {
+        'filter_column_status': '3',
         'filter_column_si_used': 'false',
         'filter_column_is_taken': 'true',
         'filter_column_taken_by': userId,
@@ -319,6 +376,38 @@ class DoRepository {
       }
     } catch (e) {
       throw Exception('Error updating DO status: $e');
+    }
+  }
+
+  Future<List<TrackingModel>> getTodayTracking({required String token}) async {
+    try {
+      final uri = Uri.parse(
+        '$baseUrl/fn/t_surat_jalan_realisasi/getTodayTracking',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('📥 Today Tracking URI: $uri');
+      print('📥 Today Tracking Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final List data = jsonResponse['data'];
+
+        return data
+            .map<TrackingModel>((e) => TrackingModel.fromJson(e))
+            .toList();
+      } else {
+        throw Exception('Failed to get today tracking: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error getTodayTracking: $e');
     }
   }
 }
