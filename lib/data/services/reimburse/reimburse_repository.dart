@@ -93,45 +93,105 @@ class ReimburseRepository {
     File? fotoAwal,
     File? fotoAkhir,
   }) async {
-    final uri = Uri.parse('$baseUrl/dynamic/t_reimburse');
-    var request = http.MultipartRequest('POST', uri);
+    // Upload files first if they exist
+    String? fotoAwalPath;
+    String? fotoAkhirPath;
 
-    request.headers['Authorization'] = 'Bearer $token';
-
-    data.toJson().forEach((key, value) {
-      if (value != null) {
-        request.fields[key] = value.toString();
-      }
-    });
-
-    // Add image files
     if (fotoAwal != null) {
-      request.files.add(
-        await http.MultipartFile.fromPath('foto_awal', fotoAwal.path),
-      );
+      fotoAwalPath = await uploadFile(token: token, file: fotoAwal);
     }
     if (fotoAkhir != null) {
-      request.files.add(
-        await http.MultipartFile.fromPath('foto_akhir', fotoAkhir.path),
-      );
+      fotoAkhirPath = await uploadFile(token: token, file: fotoAkhir);
     }
 
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
+    // Create data with uploaded file paths
+    final reimburseData = ReimburseCreateModel(
+      type: data.type,
+      date: data.date,
+      kmAwal: data.kmAwal,
+      kmAkhir: data.kmAkhir,
+      code: data.code,
+      total: data.total,
+      salesId: data.salesId,
+      unitBusinessId: data.unitBusinessId,
+      note: data.note,
+      alasan: data.alasan,
+      fotoAwal: fotoAwalPath,
+      fotoAkhir: fotoAkhirPath,
+      approvalCount: data.approvalCount,
+      approvalLevel: data.approvalLevel,
+      approvedCount: data.approvedCount,
+      status: data.status,
+    );
+
+    final uri = Uri.parse('$baseUrl/dynamic/t_reimburse');
+
+    final response = await http.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(reimburseData.toJson()),
+    );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
       if (kDebugMode) {
         print(
-          'Failed to create reimburse: ${response.statusCode} - $responseBody',
+          'Failed to create reimburse: ${response.statusCode} - ${response.body}',
         );
       }
       throw Exception('Gagal membuat reimburse');
     } else {
       if (kDebugMode) {
-        print('Reimburse created successfully: $responseBody');
+        print('Reimburse created successfully: ${response.body}');
       }
-      final body = jsonDecode(responseBody);
+      final body = jsonDecode(response.body);
       return ReimburseModel.fromJson(body['data']);
+    }
+  }
+
+  Future<String?> uploadFile({
+    required String token,
+    required File file,
+  }) async {
+    final url = Uri.parse('$baseUrl/dynamic/upload_file');
+    var request = http.MultipartRequest('POST', url);
+
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.files.add(
+      await http.MultipartFile.fromPath('path_file', file.path),
+    );
+
+    try {
+      if (kDebugMode) {
+        print('🔗 Upload URL: $url');
+      }
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (kDebugMode) {
+        print('📥 Upload Response status: ${response.statusCode}');
+        print('📥 Upload Response body: $responseBody');
+      }
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final Map<String, dynamic> responseData = json.decode(responseBody);
+        if (responseData['status'] == 'success') {
+          return responseData['data']['path_file'];
+        } else {
+          throw Exception('Upload failed: ${responseData['message']}');
+        }
+      } else {
+        throw Exception('Failed to upload file: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ uploadFile error: $e');
+      }
+      rethrow;
     }
   }
 
@@ -139,8 +199,47 @@ class ReimburseRepository {
     required String token,
     required String id,
     required ReimburseCreateModel data,
+    File? fotoAwal,
+    File? fotoAkhir,
   }) async {
+    // Upload files first if they exist
+    String? fotoAwalPath = data.fotoAwal;
+    String? fotoAkhirPath = data.fotoAkhir;
+
+    if (fotoAwal != null) {
+      fotoAwalPath = await uploadFile(token: token, file: fotoAwal);
+    }
+    if (fotoAkhir != null) {
+      if (kDebugMode) {
+        print("Uploading fotoAkhir");
+      }
+      fotoAkhirPath = await uploadFile(token: token, file: fotoAkhir);
+    }
+
+    // Create data with uploaded file paths
+    final updateData = ReimburseCreateModel(
+      type: data.type,
+      date: data.date,
+      kmAwal: data.kmAwal,
+      kmAkhir: data.kmAkhir,
+      code: data.code,
+      total: data.total,
+      salesId: data.salesId,
+      unitBusinessId: data.unitBusinessId,
+      note: data.note,
+      alasan: data.alasan,
+      fotoAwal: fotoAwalPath,
+      fotoAkhir: fotoAkhirPath,
+      approvalCount: data.approvalCount,
+      approvalLevel: data.approvalLevel,
+      approvedCount: data.approvedCount,
+      status: data.status,
+    );
+
     final uri = Uri.parse('$baseUrl/dynamic/t_reimburse/$id');
+    if (kDebugMode) {
+      print("Body: ${updateData.toJson()}");
+    }
 
     final response = await http.put(
       uri,
@@ -148,7 +247,7 @@ class ReimburseRepository {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode(data.toJson()),
+      body: jsonEncode(updateData.toJson()),
     );
 
     if (response.statusCode != 200) {

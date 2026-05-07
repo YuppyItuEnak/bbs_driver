@@ -1,5 +1,6 @@
 import 'package:bbs_driver/features/auth/presentation/pages/forget_password.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_driver/features/home/presentation/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -137,10 +138,34 @@ class _LoginFormState extends State<LoginForm> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Center(
-                    child: Text(
-                      authProvider.error!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      children: [
+                        Text(
+                          authProvider.error!,
+                          style: const TextStyle(color: Colors.red, fontSize: 13),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 10),
+                        ElevatedButton(
+                          onPressed: authProvider.isLoading
+                              ? null
+                              : () {
+                                  authProvider.login(
+                                    _usernameController.text,
+                                    _passwordController.text,
+                                  );
+                                },
+                          child: authProvider.isLoading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Coba Lagi'),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -158,6 +183,15 @@ class _LoginFormState extends State<LoginForm> {
                               _usernameController.text,
                               _passwordController.text,
                             );
+                            // After successful login, navigate to HomePage
+                            if (authProvider.isAuthenticated) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const HomePage(),
+                                ),
+                              );
+                            }
                           }
                         },
                   style: ElevatedButton.styleFrom(

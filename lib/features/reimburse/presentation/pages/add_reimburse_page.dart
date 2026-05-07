@@ -1,3 +1,4 @@
+import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/core/constants/app_colors.dart';
 import 'package:bbs_driver/data/models/reimburse/reimburse_add_model.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
@@ -41,10 +42,14 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
   final _endKmController = TextEditingController();
   final _noteController = TextEditingController();
 
+  double _calculatedTotal = 0.0;
+
   String _selectedType = "Bensin";
   File? _pickedFotoAwal;
   File? _pickedFotoAkhir;
   File? _pickedAttachment;
+  String? _fotoAwalUrl;
+  String? _fotoAkhirUrl;
   FormMode _formMode = FormMode.create;
 
   // ReadOnly flags for conditional editing
@@ -70,7 +75,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
     final auth = context.read<AuthProvider>();
     final provider = context.read<ReimburseProvider>();
 
-    if (auth.token != null && auth.user?.id != null) {
+    if (auth.token != null && auth.user!.id != null) {
       // Check if there's existing reimburse data for today
       await provider.checkReimburseToday(
         token: auth.token!,
@@ -91,6 +96,12 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
             _endKmController.text = item.kmAkhir.toString();
             _noteController.text = item.note ?? '';
             _selectedType = item.type;
+            _fotoAwalUrl = item.fotoAwal != null && item.fotoAwal!.isNotEmpty
+                ? '${ApiConstants.baseUrl2}/${item.fotoAwal}'
+                : null;
+            _fotoAkhirUrl = item.fotoAkhir != null && item.fotoAkhir!.isNotEmpty
+                ? '${ApiConstants.baseUrl2}/${item.fotoAkhir}'
+                : null;
           });
         }
 
@@ -157,10 +168,14 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
 
     if (endKm > startKm) {
       final selisih = endKm - startKm;
-      final total = (selisih / 3) * 10000;
+      _calculatedTotal = (selisih / 30) * 10000;
 
-      _amountController.text = NumberFormat('#,##0.##', 'id_ID').format(total);
+      _amountController.text = NumberFormat(
+        '#,##0.##',
+        'id_ID',
+      ).format(_calculatedTotal);
     } else {
+      _calculatedTotal = 0.0;
       _amountController.text = "0";
     }
   }
@@ -237,7 +252,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                           controller: _dateController,
                           hint: "dd/MM/yyyy",
                           icon: Icons.calendar_today_outlined,
-                          readOnly: true,
+                          readOnly: false,
                           onTap: () => _selectDate(context),
                         ),
                         const SizedBox(height: 20),
@@ -297,6 +312,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                                   _pickedFotoAwal,
                                   (file) => _pickedFotoAwal = file,
                                   readOnly: _isFotoAwalReadOnly,
+                                  imageUrl: _fotoAwalUrl,
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -306,6 +322,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                                   _pickedFotoAkhir,
                                   (file) => _pickedFotoAkhir = file,
                                   readOnly: _isFotoAkhirReadOnly,
+                                  imageUrl: _fotoAkhirUrl,
                                 ),
                               ),
                             ],
@@ -542,7 +559,11 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
     Function(File?) onImagePicked, {
     double height = 140,
     bool readOnly = false,
+    String? imageUrl,
   }) {
+    final hasImage =
+        currentImage != null || (imageUrl != null && imageUrl.isNotEmpty);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -594,14 +615,16 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
               color: const Color(0xFFF9FAFF), // Light blue-ish grey background
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade100),
-              image: currentImage != null
+              image: hasImage
                   ? DecorationImage(
-                      image: FileImage(currentImage),
+                      image: currentImage != null
+                          ? FileImage(currentImage)
+                          : NetworkImage(imageUrl!),
                       fit: BoxFit.cover,
                     )
                   : null,
             ),
-            child: currentImage == null
+            child: !hasImage
                 ? Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -661,7 +684,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                       Navigator.pop(context); // Close the dialog
 
                       final auth = context.read<AuthProvider>();
-                      if (auth.token == null || auth.user?.id == null) {
+                      if (auth.token == null || auth.user!.id == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(
@@ -689,10 +712,11 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                       }
 
                       final newReimburse = ReimburseCreateModel(
-                        salesId: auth.user!.id,
+                        salesId: auth.user!.id!,
                         type: _selectedType,
                         date: date!,
-                        total: double.tryParse(_amountController.text) ?? 0,
+                        unitBusinessId: "",
+                        total: _calculatedTotal,
                         kmAwal: double.tryParse(_startKmController.text) ?? 0,
                         kmAkhir: double.tryParse(_endKmController.text) ?? 0,
                         note: _noteController.text,
@@ -711,10 +735,32 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                       String? reimburseIdForApproval;
 
                       if (widget.isEdit) {
+                        final existingItem = provider.selected!;
+                        final updatedReimburse = ReimburseCreateModel(
+                          salesId: newReimburse.salesId,
+                          type: newReimburse.type,
+                          date: newReimburse.date,
+                          unitBusinessId: newReimburse.unitBusinessId,
+                          total: (newReimburse.total! / 30) * 10000,
+                          kmAwal: newReimburse.kmAwal,
+                          kmAkhir: newReimburse.kmAkhir,
+                          note: newReimburse.note,
+                          fotoAwal: _pickedFotoAwal != null
+                              ? ""
+                              : existingItem.fotoAwal ?? "",
+                          fotoAkhir: "",
+                          approvalCount: newReimburse.approvalCount,
+                          approvedCount: newReimburse.approvedCount,
+                          approvalLevel: newReimburse.approvalLevel,
+                          status: newReimburse.status,
+                        );
+
                         operationSuccess = await provider.update(
                           auth.token!,
                           widget.reimburseId!,
-                          newReimburse,
+                          updatedReimburse,
+                          _pickedFotoAwal,
+                          _pickedFotoAkhir,
                         );
                         if (operationSuccess) {
                           reimburseIdForApproval = widget.reimburseId!;

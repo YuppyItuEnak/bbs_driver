@@ -1,4 +1,5 @@
 import 'package:bbs_driver/core/constants/api_constants.dart';
+import 'package:bbs_driver/core/error/exceptions.dart';
 // import 'package:bbs_sales_app/core/constants/api_constants.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../data/models/auth/user_model.dart';
@@ -46,11 +47,19 @@ class AuthProvider with ChangeNotifier {
       }
 
       notifyListeners();
+    } on NetworkException catch (e) {
+      _isLoading = false;
+      _error = e.message;
+      notifyListeners();
+    } on ServerException catch (e) {
+      _isLoading = false;
+      _error = e.message;
+      notifyListeners();
     } catch (e) {
       _isLoading = false;
       if (e.toString().contains(
-        'user anda tidak diijinkan menggunakan aplikasi ini',
-      )) {
+            'user anda tidak diijinkan menggunakan aplikasi ini',
+          )) {
         logout();
         _error = 'User tidak bisa mengakses aplikasi ini';
         notifyListeners();
@@ -133,18 +142,27 @@ class AuthProvider with ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-    } catch (e) {
-      if (e.toString().contains(
+    } on NetworkException catch (e) {
+      _isLoading = false;
+      _error = e.message;
+      notifyListeners();
+    } on ServerException catch (e) {
+      _isLoading = false;
+      if (e.message.contains(
         'user anda tidak diijinkan menggunakan aplikasi ini',
       )) {
         _error = 'user anda tidak diijinkan menggunakan aplikasi ini';
         logout();
-      } else if (e.toString().contains('401') || e.toString().contains('403')) {
+      } else if (e.message.contains('401') || e.message.contains('403')) {
         logout();
       } else {
         _error = 'Gagal memuat detail pengguna';
       }
       _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _isLoading = false;
+      _error = 'Gagal memuat detail pengguna';
       notifyListeners();
     }
   }

@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../../../core/error/exceptions.dart';
 import '../../models/auth/login_response_model.dart';
 import '../../models/auth/user_model.dart';
 import '../../../core/constants/api_constants.dart';
@@ -46,8 +48,10 @@ class AuthRepository {
         );
       } else {
         final Map<String, dynamic> errorData = json.decode(response.body);
-        throw Exception(errorData['message'] ?? 'Login failed');
+        throw ServerException(errorData['message'] ?? 'Login failed');
       }
+    } on SocketException {
+      throw NetworkException('Tidak ada koneksi internet. Silakan periksa koneksi Anda dan coba lagi.');
     } catch (e) {
       if (kDebugMode) {
         print('❌ Login error: $e');
@@ -89,28 +93,32 @@ class AuthRepository {
             if (userData.isNotEmpty) {
               user = User.fromJson(userData.first);
             } else {
-              throw Exception('User data is an empty list.');
+              throw ServerException('User data is an empty list.');
             }
-          } else if (userData is Map<String, dynamic>) {
+          }
+          else if (userData is Map<String, dynamic>) {
             user = User.fromJson(userData);
-          } else {
-            throw Exception('User data is not in the expected format.');
+          }
+          else {
+            throw ServerException('User data is not in the expected format.');
           }
 
           if (user.userMobile != true) {
-            throw Exception(
+            throw ServerException(
                 'user anda tidak diijinkan menggunakan aplikasi ini');
           }
 
           return user;
         } else {
-          throw Exception(
+          throw ServerException(
             'Failed to fetch user details: ${responseData['message']}',
           );
         }
       } else {
-        throw Exception('Failed to fetch user details: ${response.statusCode}');
+        throw ServerException('Failed to fetch user details: ${response.statusCode}');
       }
+    } on SocketException {
+      throw NetworkException('Tidak ada koneksi internet. Silakan periksa koneksi Anda dan coba lagi.');
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error fetching user details: $e');
@@ -155,13 +163,15 @@ class AuthRepository {
         final Map<String, dynamic> responseData = json.decode(response.body);
         return responseData['status'] == 'success';
       } else {
-        throw Exception('Failed to change password: ${response.statusCode}');
+        throw ServerException('Failed to change password: ${response.statusCode}');
       }
+    } on SocketException {
+      throw NetworkException('Tidak ada koneksi internet. Silakan periksa koneksi Anda dan coba lagi.');
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error changing password: $e');
       }
-      throw Exception('Failed to change password: $e');
+      throw ServerException('Failed to change password: $e');
     }
   }
 }

@@ -41,7 +41,7 @@ class DeliveryOrderModel {
       deliveryPlanId: json['delivery_plan_id'],
       code: json['code'],
       date: json['date'],
-      status: json['status'],
+      status: (json['status'] as num?)?.toInt() ?? 0,
       siUsed: json['si_used'] ?? false,
       isTaken: json['is_taken'] ?? false,
       customer: json['m_customer']['name'],
@@ -111,7 +111,7 @@ class SalesOrderModel {
       code: json['code'],
       date: json['date'],
       estDate: json['est_date'],
-      status: json['status'] ?? 0,
+      status: (json['status'] as num?)?.toInt() ?? 0,
 
       unitBusiness: json['unit_bussiness'] ?? '-',
       top: json['top'] ?? '-',

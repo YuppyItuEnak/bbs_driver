@@ -1,7 +1,9 @@
+import 'package:bbs_driver/data/models/reimburse/reimburse_model.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class ReimburseCardItem extends StatelessWidget {
-  final Map<String, String> item;
+  final ReimburseModel item;
 
   const ReimburseCardItem({
     super.key,
@@ -11,7 +13,24 @@ class ReimburseCardItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Logika status warna
-    bool isPosted = item['status'] == "POSTED";
+    final status = item.status?.toUpperCase();
+    bool isPosted = status == "IN_APPROVAL";
+    bool isDraft = status == "DRAFT";
+    bool isApproved = status == "APPROVED";
+    bool isRejected = status == "REJECT";
+
+    Color statusColor;
+    if (isPosted) {
+      statusColor = const Color(0xFF6366F1);
+    } else if (isDraft) {
+      statusColor = Colors.grey;
+    } else if (isApproved) {
+      statusColor = const Color(0xFF22C55E);
+    } else if (isRejected) {
+      statusColor = Colors.red;
+    } else {
+      statusColor = Colors.black;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -33,7 +52,7 @@ class ReimburseCardItem extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                item['title'] ?? '',
+                item.type ?? '',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
@@ -41,11 +60,11 @@ class ReimburseCardItem extends StatelessWidget {
                 ),
               ),
               Text(
-                item['status'] ?? '',
+                item.status ?? '',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
-                  color: isPosted ? const Color(0xFF6366F1) : const Color(0xFF22C55E),
+                  color: statusColor,
                 ),
               ),
             ],
@@ -55,14 +74,16 @@ class ReimburseCardItem extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                item['km'] ?? '',
+                '${(item.kmAkhir ?? 0) - (item.kmAwal ?? 0)} KM',
                 style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 14,
                 ),
               ),
               Text(
-                item['date'] ?? '',
+                item.date != null
+                    ? DateFormat('dd MMM yyyy').format(item.date!)
+                    : '',
                 style: const TextStyle(
                   color: Colors.grey,
                   fontSize: 14,

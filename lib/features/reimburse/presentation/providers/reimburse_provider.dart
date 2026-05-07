@@ -147,8 +147,10 @@ class ReimburseProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _reimburseCheck =
-          await _repo.checkReimburseToday(token: token, salesId: salesId);
+      _reimburseCheck = await _repo.checkReimburseToday(
+        token: token,
+        salesId: salesId,
+      );
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -161,9 +163,17 @@ class ReimburseProvider extends ChangeNotifier {
     String token,
     String id,
     ReimburseCreateModel data,
+    File? fotoAwal,
+    File? fotoAkhir,
   ) async {
     try {
-      await _repo.updateReimburse(token: token, id: id, data: data);
+      await _repo.updateReimburse(
+        token: token,
+        id: id,
+        data: data,
+        fotoAwal: fotoAwal,
+        fotoAkhir: fotoAkhir,
+      );
       return true;
     } catch (e) {
       _error = e.toString();
