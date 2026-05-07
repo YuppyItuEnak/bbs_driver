@@ -1,6 +1,6 @@
 import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/core/error/exceptions.dart';
-// import 'package:bbs_sales_app/core/constants/api_constants.dart';
+// import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../data/models/auth/user_model.dart';
 import '../../../../data/services/auth/auth_repository.dart';
@@ -14,11 +14,13 @@ class AuthProvider with ChangeNotifier {
 
   User? _user;
   String? _token;
+  String? _unitBusinessId;
   bool _isLoading = false;
   String? _error;
 
   User? get user => _user;
   String? get token => _token;
+  String? get unitBusinessId => _unitBusinessId;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _token != null;
@@ -43,6 +45,7 @@ class AuthProvider with ChangeNotifier {
         final salesId = _user!.userDetails.first.fUserDefault;
         if (salesId != null) {
           await _fetchAndSaveUnitBusinessId(salesId, _token!, prefs);
+          _unitBusinessId = prefs.getString('unit_bussiness_id');
         }
       }
 
@@ -58,8 +61,8 @@ class AuthProvider with ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       if (e.toString().contains(
-            'user anda tidak diijinkan menggunakan aplikasi ini',
-          )) {
+        'user anda tidak diijinkan menggunakan aplikasi ini',
+      )) {
         logout();
         _error = 'User tidak bisa mengakses aplikasi ini';
         notifyListeners();
@@ -73,6 +76,7 @@ class AuthProvider with ChangeNotifier {
   void logout() async {
     _user = null;
     _token = null;
+    _unitBusinessId = null;
     _error = null;
 
     final prefs = await SharedPreferences.getInstance();
@@ -101,6 +105,7 @@ class AuthProvider with ChangeNotifier {
 
         _token = storedToken;
         _user = User.fromJson(json.decode(storedUser));
+        _unitBusinessId = prefs.getString('unit_bussiness_id');
         notifyListeners();
         return true;
       } catch (e) {
@@ -173,12 +178,15 @@ class AuthProvider with ChangeNotifier {
     SharedPreferences prefs,
   ) async {
     try {
-      final uri = Uri.parse(
-        '${ApiConstants.baseUrl}/dynamic/m_sales_area_d_sales',
-      ).replace(queryParameters: {
-        'where': 'sales_id=$salesId',
-        'include': 'm_sales_area,m_sales_area>m_unit_bussiness',
-      });
+      final uri =
+          Uri.parse(
+            '${ApiConstants.baseUrl}/dynamic/m_sales_area_d_sales',
+          ).replace(
+            queryParameters: {
+              'where': 'sales_id=$salesId',
+              'include': 'm_sales_area,m_sales_area>m_unit_bussiness',
+            },
+          );
 
       final response = await http.get(
         uri,
@@ -196,6 +204,7 @@ class AuthProvider with ChangeNotifier {
               data[0]['m_sales_area']?['m_unit_bussiness']?['id'];
           if (unitBusinessId != null) {
             await prefs.setString('unit_bussiness_id', unitBusinessId);
+            _unitBusinessId = unitBusinessId;
           }
         }
       }

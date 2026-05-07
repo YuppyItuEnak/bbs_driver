@@ -1,4 +1,4 @@
-// import 'package:bbs_sales_app/data/models/customer/customer_name_model.dart';
+// import 'package:bbs_driver/data/models/customer/customer_name_model.dart';
 import 'package:bbs_driver/data/models/customer/customer_name_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -97,7 +97,8 @@ class QuotationProvider with ChangeNotifier {
       _customerSearchResults = await _customerRepository.fetchListCustomersName(
         token,
         search: query,
-        salesId: salesId, unitBusinessId: '',
+        salesId: salesId,
+        unitBusinessId: '',
       );
       notifyListeners();
     } catch (e) {

@@ -3,6 +3,7 @@ import 'package:bbs_driver/data/models/delivery_order/delivery_order_detail.dart
 class DeliveryOrderModel {
   final String id;
   final String? deliveryPlanId;
+  final String? customerId;
   final String code;
   final String date;
   final int status;
@@ -20,6 +21,7 @@ class DeliveryOrderModel {
   DeliveryOrderModel({
     required this.id,
     this.deliveryPlanId,
+    this.customerId,
     required this.code,
     required this.date,
     this.status = 0,
@@ -39,6 +41,7 @@ class DeliveryOrderModel {
     return DeliveryOrderModel(
       id: json['id'],
       deliveryPlanId: json['delivery_plan_id'],
+      customerId: json['m_customer']?['id'] ?? json['customer_id'],
       code: json['code'],
       date: json['date'],
       status: (json['status'] as num?)?.toInt() ?? 0,

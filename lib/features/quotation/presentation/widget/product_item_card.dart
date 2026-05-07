@@ -1,7 +1,7 @@
 import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/data/models/item/item_model.dart';
-// import 'package:bbs_sales_app/core/constants/api_constants.dart';
-// import 'package:bbs_sales_app/data/models/item/item_model.dart';
+// import 'package:bbs_driver/core/constants/api_constants.dart';
+// import 'package:bbs_driver/data/models/item/item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -162,7 +162,9 @@ class _ProductItemCardState extends State<ProductItemCard> {
                                 isDense: true,
                                 // contentPadding: EdgeInsets.symmetric(vertical: 8),
                               ),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                               onChanged: (value) {
                                 if (widget.onQuantityChanged != null) {
                                   final val = int.tryParse(value);

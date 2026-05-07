@@ -1,10 +1,8 @@
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
-import 'package:bbs_driver/features/deilvery_order/presentation/pages/detail_do_page.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/rute_harian_page.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
-import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
-import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
+import 'package:bbs_driver/features/do_checkout/presentation/pages/do_checkout_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -34,7 +32,8 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
         isRefresh: true,
       );
 
-      doProvider.checkOpenTimeIn(token: token);
+      doProvider.checkOpenTimeIn(token: token, userId: userId);
+      doProvider.refreshHasConfirmedDo(token: token, userId: userId);
     });
   }
 
@@ -115,12 +114,13 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
                   );
                 }
 
+                final groups = _groupByCustomer(provider.doList);
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: provider.doList.length,
+                  itemCount: groups.length,
                   itemBuilder: (context, index) {
-                    final doItem = provider.doList[index];
-                    return _buildDoCard(doItem);
+                    final group = groups[index];
+                    return _buildCustomerGroupCard(group);
                   },
                 );
               },
@@ -170,7 +170,25 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
 
   // ================= CARD =================
 
-  Widget _buildDoCard(DeliveryOrderModel item) {
+  List<_CustomerDoGroup> _groupByCustomer(List<DeliveryOrderModel> list) {
+    final map = <String, List<DeliveryOrderModel>>{};
+    for (final item in list) {
+      final key = item.customerId ?? (item.customer ?? item.id);
+      map.putIfAbsent(key, () => <DeliveryOrderModel>[]).add(item);
+    }
+    return map.entries
+        .map(
+          (e) => _CustomerDoGroup(
+            customerKey: e.key,
+            customerName: e.value.first.customer ?? '-',
+            shipTo: e.value.first.shipTo ?? '-',
+            items: e.value,
+          ),
+        )
+        .toList();
+  }
+
+  Widget _buildCustomerGroupCard(_CustomerDoGroup group) {
     return GestureDetector(
       onTap: () {
         final token = context.read<AuthProvider>().token;
@@ -183,31 +201,58 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
 
         final doProvider = context.read<DoProvider>();
         final checkInStatus = doProvider.checkInStatus;
+        final deliveryPlanId = group.items.first.deliveryPlanId;
+
         bool shouldGoToCheckout = false;
-        print("ID 1 ${item.id}");
-        print("ID 2 ${checkInStatus['data']}");
-        if (checkInStatus['has_open'] == true) {
-          final data = checkInStatus['data'] as List<dynamic>;
-          shouldGoToCheckout = data.any(
-            (element) => element['t_surat_jalan_id'] == item.id,
-          );
+        if (checkInStatus['has_open'] == true && deliveryPlanId != null) {
+          final data = (checkInStatus['data'] as List?)?.cast<dynamic>() ?? [];
+          final open = data.cast<dynamic>().firstWhere(
+                (e) =>
+                    e['delivery_plan_id'] == deliveryPlanId &&
+                    e['time_out'] == null,
+                orElse: () => null,
+              );
+          if (open != null) {
+            shouldGoToCheckout = true;
+          }
         }
 
+        final doIds = group.items.map((e) => e.id).toList();
+        final doCodes = group.items.map((e) => e.code).toList();
+
         if (shouldGoToCheckout) {
+          if (deliveryPlanId == null || deliveryPlanId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Delivery plan ID tidak ditemukan')),
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => DetailDoCheckout(doId: item.id, token: token),
+              builder: (_) => DoCheckoutPage(
+                doIds: doIds,
+                doCodes: doCodes,
+                customerName: group.customerName,
+                deliveryPlanId: deliveryPlanId,
+              ),
             ),
           );
         } else {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) =>
-                  DetailDoPage(isConfirmed: true, doId: item.id, token: token),
+          if (deliveryPlanId == null || deliveryPlanId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Delivery plan ID tidak ditemukan')),
+            );
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Belum ada DP realisasi (check-in DP) untuk delivery plan ini. Silakan Check In dari Home dulu.',
+              ),
             ),
           );
+          return;
         }
       },
       child: Container(
@@ -229,7 +274,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item.customer ?? '-',
+              group.customerName,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
@@ -238,7 +283,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
             ),
             const SizedBox(height: 5),
             Text(
-              item.shipTo ?? '-',
+              group.shipTo,
               style: const TextStyle(color: Colors.grey, fontSize: 12),
             ),
             const SizedBox(height: 10),
@@ -254,7 +299,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
                 //   ),
                 // ),
                 Text(
-                  item.date ?? '-',
+                  'Total DO: ${group.items.length}',
                   style: const TextStyle(color: Colors.grey, fontSize: 11),
                 ),
               ],
@@ -265,3 +310,19 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
     );
   }
 }
+
+class _CustomerDoGroup {
+  final String customerKey;
+  final String customerName;
+  final String shipTo;
+  final List<DeliveryOrderModel> items;
+
+  _CustomerDoGroup({
+    required this.customerKey,
+    required this.customerName,
+    required this.shipTo,
+    required this.items,
+  });
+}
+
+// NOTE: Customer card now navigates directly to Check-in/Check-out (no intermediate DO list page).

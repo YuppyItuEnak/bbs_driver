@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
+import 'package:bbs_driver/data/services/delivery_order/do_repository.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/home/presentation/pages/home_page.dart';
@@ -11,9 +13,19 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 class DoCheckoutPage extends StatefulWidget {
-  final String doId;
-  final String? checkInId;
-  const DoCheckoutPage({super.key, required this.doId, this.checkInId});
+  final List<String> doIds;
+  final List<String> doCodes;
+  final String customerName;
+  final String deliveryPlanId;
+  final String? realisasiId;
+  const DoCheckoutPage({
+    super.key,
+    required this.doIds,
+    required this.doCodes,
+    required this.customerName,
+    required this.deliveryPlanId,
+    this.realisasiId,
+  });
 
   @override
   State<DoCheckoutPage> createState() => _DoCheckoutPageState();
@@ -25,6 +37,11 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
   final Color darkText = const Color(0xFF262626);
   final Color disabledGrey = const Color(0xFFBFBFBF);
   final Color redCheckout = const Color(0xFFFF4D4F);
+
+  final DoRepository _doRepo = DoRepository();
+  bool _isLoadingDos = false;
+  String? _doLoadError;
+  List<DeliveryOrderModel> _doDetails = [];
 
   File? _image;
   final ImagePicker _picker = ImagePicker();
@@ -38,6 +55,8 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
   String _duration = '';
   bool _isLoadingLocation = false;
   bool _isCheckingOut = false;
+  bool _isFailed = false;
+  final TextEditingController _failNoteCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -45,6 +64,41 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
     _updateCurrentDateTime();
     _requestLocationPermission();
     _getCheckInData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadDoDetails());
+  }
+
+  @override
+  void dispose() {
+    _failNoteCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadDoDetails() async {
+    final auth = context.read<AuthProvider>();
+    final token = auth.token;
+    if (token == null) return;
+
+    setState(() {
+      _isLoadingDos = true;
+      _doLoadError = null;
+    });
+
+    try {
+      final results = await Future.wait(
+        widget.doIds.map((id) => _doRepo.getDetailDo(token: token, doId: id)),
+      );
+      if (!mounted) return;
+      setState(() {
+        _doDetails = results;
+        _isLoadingDos = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingDos = false;
+        _doLoadError = e.toString();
+      });
+    }
   }
 
   void _updateCurrentDateTime() {
@@ -62,7 +116,7 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
     if (checkInStatus['has_open'] == true) {
       final data = checkInStatus['data'] as List;
       for (var item in data) {
-        if (item['t_surat_jalan_id'] == widget.doId &&
+        if (item['delivery_plan_id'] == widget.deliveryPlanId &&
             item['time_out'] == null) {
           setState(() {
             _checkInTime = item['time_in'] ?? '';
@@ -341,29 +395,6 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
       return;
     }
 
-    // Get the checkInId - prefer the one passed via constructor, otherwise get from checkInStatus
-    String checkInId = widget.checkInId ?? '';
-    if (checkInId.isEmpty) {
-      final checkInStatus = doProvider.checkInStatus;
-      if (checkInStatus['has_open'] == true) {
-        final data = checkInStatus['data'] as List;
-        for (var item in data) {
-          if (item['t_surat_jalan_id'] == widget.doId &&
-              item['time_out'] == null) {
-            checkInId = item['id'] ?? '';
-            break;
-          }
-        }
-      }
-    }
-
-    if (checkInId.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Data check-in tidak ditemukan')),
-      );
-      return;
-    }
-
     setState(() {
       _isCheckingOut = true;
     });
@@ -372,23 +403,24 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
       final now = DateTime.now().toUtc();
       final timeOut = now.toIso8601String();
 
-      await doProvider.checkOut(
+      final userId = authProvider.user?.id;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('User ID tidak ditemukan');
+      }
+
+      // Complete customer checkout (close SJ realisasi + set DO status=3)
+      await doProvider.completeCustomerCheckout(
         token: authProvider.token!,
-        checkInId: checkInId,
-        doId: widget.doId,
+        doIds: widget.doIds,
+        userId: userId,
         timeOut: timeOut,
         latOut: _latitude,
         longOut: _longitude,
         addressOut: _address,
         duration: _duration,
         photo: _image!,
-      );
-
-      // Update status to Received (3) after successful checkout
-      await doProvider.updateDoStatus(
-        token: authProvider.token!,
-        doId: widget.doId,
-        status: 3,
+        isFailed: _isFailed,
+        note: _isFailed ? _failNoteCtrl.text : null,
       );
 
       _showSuccessDialog(context);
@@ -438,6 +470,37 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
                       child: IntrinsicHeight(
                         child: Column(
                           children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24.0,
+                                vertical: 12,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.customerName,
+                                    style: TextStyle(
+                                      color: darkText,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    widget.doCodes.isEmpty
+                                        ? '-'
+                                        : widget.doCodes.join(', '),
+                                    style: TextStyle(
+                                      color: greyText,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  _buildDoItemsSection(),
+                                ],
+                              ),
+                            ),
                             // Bagian Atas: Area Kamera/Galeri
                             Expanded(
                               flex: 3,
@@ -506,6 +569,49 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
                                   Row(
                                     children: [
                                       Expanded(
+                                        child: ChoiceChip(
+                                          label: const Text('Checkout'),
+                                          selected: !_isFailed,
+                                          onSelected: _isCheckingOut
+                                              ? null
+                                              : (_) => setState(
+                                                    () => _isFailed = false,
+                                                  ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: ChoiceChip(
+                                          label: const Text('Gagal'),
+                                          selected: _isFailed,
+                                          onSelected: _isCheckingOut
+                                              ? null
+                                              : (_) =>
+                                                    setState(() => _isFailed = true),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (_isFailed) ...[
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: _failNoteCtrl,
+                                      maxLines: 3,
+                                      decoration: InputDecoration(
+                                        labelText: 'Catatan gagal (wajib)',
+                                        filled: true,
+                                        fillColor: Colors.grey.shade50,
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide.none,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Expanded(
                                         child: _buildInfoItem(
                                           "Tanggal",
                                           _currentDateTime.isNotEmpty
@@ -560,14 +666,30 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
                                     child: ElevatedButton(
                                       onPressed: _isCheckingOut
                                           ? null
-                                          : () => _performCheckOut(
-                                              context,
-                                              doProvider,
-                                              authProvider,
-                                            ),
+                                          : () {
+                                              if (_isFailed &&
+                                                  _failNoteCtrl.text.trim().isEmpty) {
+                                                ScaffoldMessenger.of(context)
+                                                    .showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Catatan gagal wajib diisi',
+                                                    ),
+                                                  ),
+                                                );
+                                                return;
+                                              }
+                                              _performCheckOut(
+                                                context,
+                                                doProvider,
+                                                authProvider,
+                                              );
+                                            },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: _image != null
-                                            ? redCheckout
+                                            ? (_isFailed
+                                                  ? Colors.grey
+                                                  : redCheckout)
                                             : disabledGrey,
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
@@ -621,6 +743,81 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDoItemsSection() {
+    if (_isLoadingDos) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_doLoadError != null) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          'Gagal memuat detail DO: $_doLoadError',
+          style: const TextStyle(fontSize: 12, color: Colors.red),
+        ),
+      );
+    }
+    if (_doDetails.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(
+          'Detail barang DO belum tersedia.',
+          style: TextStyle(fontSize: 12, color: greyText),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _doDetails.map((doItem) {
+        return Container(
+          margin: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                doItem.code,
+                style: TextStyle(
+                  color: darkText,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...doItem.details.map((d) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          d.item?.name ?? '-',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                      Text(
+                        '${d.qty} ${d.uomUnit}',
+                        style: TextStyle(fontSize: 12, color: greyText),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

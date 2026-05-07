@@ -1,6 +1,7 @@
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_checkin_page.dart';
 import 'package:bbs_driver/features/do_checkout/presentation/pages/do_checkout_page.dart';
+import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -28,11 +29,16 @@ class _DetailDoPageState extends State<DetailDoPage> {
     final checkInStatus = provider.checkInStatus;
     final data = checkInStatus['data'] as List;
 
+    final currentDeliveryPlanId = provider.detailDO?.deliveryPlanId;
     for (var item in data) {
-      final String apiDoId = item['t_surat_jalan_id']?.toString() ?? '';
-      final String currentDoId = widget.doId.toString();
+      final apiDeliveryPlanId = item['delivery_plan_id']?.toString();
+      final apiDoId = item['t_surat_jalan_id']?.toString();
 
-      if (apiDoId == currentDoId && item['time_out'] == null) {
+      final matchesDeliveryPlan = currentDeliveryPlanId != null &&
+          apiDeliveryPlanId == currentDeliveryPlanId;
+      final matchesDoId = apiDoId == widget.doId.toString();
+
+      if ((matchesDeliveryPlan || matchesDoId) && item['time_out'] == null) {
         return true;
       }
     }
@@ -43,13 +49,17 @@ class _DetailDoPageState extends State<DetailDoPage> {
     final checkInStatus = provider.checkInStatus;
     final data = checkInStatus['data'] as List;
 
+    final currentDeliveryPlanId = provider.detailDO?.deliveryPlanId;
     for (var item in data) {
       if (item['time_out'] == null) {
-        final String apiDoId = item['t_surat_jalan_id']?.toString() ?? '';
-        final String currentDoId = widget.doId.toString();
+        final apiDeliveryPlanId = item['delivery_plan_id']?.toString();
+        final apiDoId = item['t_surat_jalan_id']?.toString();
 
-        if (apiDoId != currentDoId) {
-          return true; // Disable if there's an open check-in for a different DO
+        // Disable if there's an open check-in for a different delivery plan (or different DO on legacy payload)
+        if (currentDeliveryPlanId != null && apiDeliveryPlanId != null) {
+          if (apiDeliveryPlanId != currentDeliveryPlanId) return true;
+        } else if (apiDoId != null && apiDoId != widget.doId.toString()) {
+          return true;
         }
       }
     }
@@ -62,8 +72,9 @@ class _DetailDoPageState extends State<DetailDoPage> {
 
     Future.microtask(() {
       final provider = context.read<DoProvider>();
+      final userId = context.read<AuthProvider>().user?.id;
       provider.fetchDetailDo(token: widget.token, doId: widget.doId);
-      provider.checkOpenTimeIn(token: widget.token).then((_) {
+      provider.checkOpenTimeIn(token: widget.token, userId: userId).then((_) {
         if (mounted) {
           setState(() {
             _hasCheckedIn = _hasOpenCheckInForCurrentDo(provider);
@@ -231,20 +242,67 @@ class _DetailDoPageState extends State<DetailDoPage> {
                         ? null
                         : (_hasCheckedIn
                               ? () {
+                                  final doProvider = context.read<DoProvider>();
+                                  final deliveryPlanId =
+                                      doProvider.detailDO?.deliveryPlanId;
+                                  if (deliveryPlanId == null ||
+                                      deliveryPlanId.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Delivery plan ID tidak ditemukan pada DO.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          DoCheckoutPage(doId: widget.doId),
+                                          DoCheckoutPage(
+                                            doIds: [widget.doId],
+                                            doCodes: [
+                                              doProvider.detailDO?.code ??
+                                                  widget.doId,
+                                            ],
+                                            customerName:
+                                                doProvider.detailDO?.customer ??
+                                                '-',
+                                            deliveryPlanId: deliveryPlanId,
+                                          ),
                                     ),
                                   );
                                 }
                               : () {
+                                  final doProvider = context.read<DoProvider>();
+                                  final deliveryPlanId =
+                                      doProvider.detailDO?.deliveryPlanId;
+                                  if (deliveryPlanId == null ||
+                                      deliveryPlanId.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Delivery plan ID tidak ditemukan pada DO.',
+                                        ),
+                                      ),
+                                    );
+                                    return;
+                                  }
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) =>
-                                          DoCheckinPage(doId: widget.doId),
+                                      builder: (context) => DoCheckinPage(
+                                        doIds: [widget.doId],
+                                        doCodes: [
+                                          doProvider.detailDO?.code ??
+                                              widget.doId,
+                                        ],
+                                        customerName:
+                                            doProvider.detailDO?.customer ??
+                                            '-',
+                                        deliveryPlanId: deliveryPlanId,
+                                      ),
                                     ),
                                   );
                                 }),

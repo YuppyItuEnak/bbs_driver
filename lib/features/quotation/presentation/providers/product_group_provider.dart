@@ -1,5 +1,5 @@
-// import 'package:bbs_sales_app/data/models/m_gen_model.dart';
-// import 'package:bbs_sales_app/data/services/m_gen_repository.dart';
+// import 'package:bbs_driver/data/models/m_gen_model.dart';
+// import 'package:bbs_driver/data/services/m_gen_repository.dart';
 import 'package:bbs_driver/data/models/m_gen_model.dart';
 import 'package:bbs_driver/data/services/m_gen_repository.dart';
 import 'package:flutter/material.dart';
@@ -20,8 +20,10 @@ class ProductGroupProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _productGroups =
-          await _mGenRepository.fetchMGen('group=m_item_division', token);
+      _productGroups = await _mGenRepository.fetchMGen(
+        'group=m_item_division',
+        token,
+      );
       _isLoading = false;
       notifyListeners();
     } catch (e) {

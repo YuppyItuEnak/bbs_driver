@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 class ActionMenuCard extends StatelessWidget {
   final String label;
+  final String? sublabel;
   final IconData icon;
   final Color bgColor;
   final Color iconColor;
@@ -9,6 +10,7 @@ class ActionMenuCard extends StatelessWidget {
   const ActionMenuCard({
     super.key,
     required this.label,
+    this.sublabel,
     required this.icon,
     required this.bgColor,
     required this.iconColor,
@@ -35,6 +37,16 @@ class ActionMenuCard extends StatelessWidget {
               color: iconColor.withOpacity(0.8),
             ),
           ),
+          if (sublabel != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              sublabel!,
+              style: TextStyle(
+                fontSize: 12,
+                color: iconColor.withOpacity(0.7),
+              ),
+            ),
+          ],
         ],
       ),
     );

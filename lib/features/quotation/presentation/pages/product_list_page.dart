@@ -1,10 +1,10 @@
-// import 'package:bbs_sales_app/core/constants/app_colors.dart';
-// import 'package:bbs_sales_app/data/models/item/item_model.dart';
-// import 'package:bbs_sales_app/data/models/item/selected_item_model.dart';
-// import 'package:bbs_sales_app/data/models/m_gen_model.dart';
-// import 'package:bbs_sales_app/features/auth/presentation/providers/auth_provider.dart';
-// import 'package:bbs_sales_app/features/quotation/presentation/providers/product_provider.dart';
-// import 'package:bbs_sales_app/features/quotation/presentation/widget/product_item_card.dart';
+// import 'package:bbs_driver/core/constants/app_colors.dart';
+// import 'package:bbs_driver/data/models/item/item_model.dart';
+// import 'package:bbs_driver/data/models/item/selected_item_model.dart';
+// import 'package:bbs_driver/data/models/m_gen_model.dart';
+// import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
+// import 'package:bbs_driver/features/quotation/presentation/providers/product_provider.dart';
+// import 'package:bbs_driver/features/quotation/presentation/widget/product_item_card.dart';
 import 'package:bbs_driver/core/constants/app_colors.dart';
 import 'package:bbs_driver/data/models/item/item_model.dart';
 import 'package:bbs_driver/data/models/item/selected_item_model.dart';
@@ -71,8 +71,9 @@ class _ProductListPageState extends State<ProductListPage> {
 
   void _onItemTapped(ItemModel item) {
     setState(() {
-      final index =
-          _selectedItems.indexWhere((selected) => selected.item.id == item.id);
+      final index = _selectedItems.indexWhere(
+        (selected) => selected.item.id == item.id,
+      );
       if (index != -1) {
         _selectedItems.removeAt(index);
       } else {
@@ -237,11 +238,13 @@ class _ProductListPageState extends State<ProductListPage> {
 
                 ...List.generate(provider.products.length, (index) {
                   final item = provider.products[index];
-                  final selectedItemIndex = _selectedItems
-                      .indexWhere((selected) => selected.item.id == item.id);
+                  final selectedItemIndex = _selectedItems.indexWhere(
+                    (selected) => selected.item.id == item.id,
+                  );
                   final isSelected = selectedItemIndex != -1;
-                  final selectedItem =
-                      isSelected ? _selectedItems[selectedItemIndex] : null;
+                  final selectedItem = isSelected
+                      ? _selectedItems[selectedItemIndex]
+                      : null;
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),

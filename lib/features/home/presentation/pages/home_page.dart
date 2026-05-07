@@ -1,8 +1,9 @@
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/riwayat_do_page.dart';
-import 'package:bbs_driver/features/deilvery_order/presentation/pages/rute_harian_page.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
+import 'package:bbs_driver/features/do_checkin/presentation/pages/dp_checkin_page.dart';
 import 'package:bbs_driver/features/do_checkin/presentation/pages/do_sudah_confirm_page.dart';
-import 'package:bbs_driver/features/do_checkout/presentation/pages/detail_do_checkout.dart';
+import 'package:bbs_driver/features/do_checkout/presentation/pages/dp_checkout_page.dart';
+import 'package:bbs_driver/features/complaint/presentation/pages/list_complaint_page.dart';
 import 'package:bbs_driver/features/notification/presentation/pages/notification_page.dart';
 import 'package:bbs_driver/features/reimburse/presentation/pages/reimburse_page.dart';
 import 'package:bbs_driver/features/home/presentation/widgets/action_menu_card.dart';
@@ -31,9 +32,26 @@ class _HomePageState extends State<HomePage> {
     final token = context.read<AuthProvider>().token;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AuthProvider>(context, listen: false).fetchUserDetails();
-      Provider.of<DoProvider>(context).fetchDoMasuk(token: token!);
-      Provider.of<DoProvider>(context).checkOpenTimeIn(token: token!);
+      Provider.of<AuthProvider>(context, listen: false).fetchUserDetails().then(
+        (_) {
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          final doProvider = Provider.of<DoProvider>(context, listen: false);
+          if (auth.token != null && auth.user?.id != null) {
+            doProvider.checkOpenTimeIn(
+              token: auth.token!,
+              userId: auth.user!.id,
+            );
+            doProvider.refreshHasConfirmedDo(
+              token: auth.token!,
+              userId: auth.user!.id,
+            );
+            doProvider.refreshDoMasukTotal(token: auth.token!);
+          }
+        },
+      );
+      if (token != null) {
+        Provider.of<DoProvider>(context, listen: false).fetchDoMasuk(token: token);
+      }
     });
   }
 
@@ -98,7 +116,22 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildHomeContent(AuthProvider auth) {
     return RefreshIndicator(
-      onRefresh: () => auth.fetchUserDetails(),
+      onRefresh: () async {
+        await auth.fetchUserDetails();
+        final token = auth.token;
+        final userId = auth.user?.id;
+        if (token != null && userId != null && context.mounted) {
+          await context.read<DoProvider>().checkOpenTimeIn(
+                token: token,
+                userId: userId,
+              );
+          await context.read<DoProvider>().refreshHasConfirmedDo(
+                token: token,
+                userId: userId,
+              );
+          await context.read<DoProvider>().refreshDoMasukTotal(token: token);
+        }
+      },
       child: SingleChildScrollView(
         child: Column(
           children: [
@@ -124,9 +157,8 @@ class _HomePageState extends State<HomePage> {
                       // Row Check In & Out
                       Consumer<DoProvider>(
                         builder: (context, doProvider, child) {
-                          final canCheckIn = doProvider.canCheckIn;
-                          final hasOpen =
-                              doProvider.checkInStatus['has_open'] == true;
+                          final canCheckIn = doProvider.homeCheckInEnabled;
+                          final hasOpen = doProvider.homeCheckOutEnabled;
                           return Row(
                             children: [
                               // TOMBOL CHECK IN
@@ -134,17 +166,49 @@ class _HomePageState extends State<HomePage> {
                                 child: GestureDetector(
                                   onTap: canCheckIn
                                       ? () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  const DoSudahConfirmPage(),
-                                            ),
-                                          );
+                                          final auth = context.read<AuthProvider>();
+                                          final token = auth.token;
+                                          final userId = auth.user?.id;
+                                          if (token == null || userId == null) return;
+
+                                          context
+                                              .read<DoProvider>()
+                                              .getConfirmedDeliveryPlanIds(
+                                                token: token,
+                                                userId: userId,
+                                              )
+                                              .then((ids) {
+                                            if (!context.mounted) return;
+                                            if (ids.isEmpty) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Belum ada DO yang dikonfirmasi'),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            if (ids.length > 1) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(
+                                                  content: Text('Delivery plan lebih dari 1, cek DO yang dikonfirmasi'),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => DpCheckinPage(
+                                                  deliveryPlanId: ids.first,
+                                                ),
+                                              ),
+                                            );
+                                          });
                                         }
                                       : null,
                                   child: ActionMenuCard(
                                     label: "Check In",
+                                    sublabel: 'Sisa DO: ${doProvider.doMasukTotal}',
                                     icon: Icons.login_rounded,
                                     bgColor: canCheckIn
                                         ? const Color(0xFFE8F9EE)
@@ -162,33 +226,45 @@ class _HomePageState extends State<HomePage> {
                                 child: GestureDetector(
                                   onTap: hasOpen
                                       ? () {
-                                          // Get the first open check-in's doId
-                                          final data =
-                                              doProvider.checkInStatus['data']
-                                                  as List;
-                                          final openCheckIn = data.firstWhere(
-                                            (element) =>
-                                                element['time_out'] == null,
-                                            orElse: () => null,
-                                          );
-                                          if (openCheckIn != null) {
-                                            final doId =
-                                                openCheckIn['t_surat_jalan_id'];
-                                            final token = context
-                                                .read<AuthProvider>()
-                                                .token;
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    DetailDoCheckout(
-                                                      doId: doId,
-                                                      token: token!,
-                                                    ),
-                                              ),
+                                          final auth = context.read<AuthProvider>();
+                                          final token = auth.token;
+                                          final userId = auth.user?.id;
+                                          if (token == null || userId == null) return;
+
+                                          final data = doProvider.checkInStatus['data'] as List? ?? const [];
+                                          final open = data.cast<dynamic>().firstWhere(
+                                                (e) =>
+                                                    e is Map &&
+                                                    e['time_in'] != null &&
+                                                    e['time_out'] == null,
+                                                orElse: () => null,
+                                              );
+
+                                          final realisasiId =
+                                              (open is Map) ? open['id']?.toString() : null;
+                                          final deliveryPlanId =
+                                              (open is Map) ? open['delivery_plan_id']?.toString() : null;
+
+                                          if (realisasiId == null ||
+                                              realisasiId.isEmpty ||
+                                              deliveryPlanId == null ||
+                                              deliveryPlanId.isEmpty) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(content: Text('Data check-in tidak ditemukan')),
                                             );
+                                            return;
                                           }
-                                        }
+
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => DpCheckoutPage(
+                                                deliveryPlanId: deliveryPlanId,
+                                                realisasiId: realisasiId,
+                                              ),
+                                            ),
+                                          );
+                                      }
                                       : null,
                                   child: ActionMenuCard(
                                     label: "Check Out",
@@ -205,6 +281,31 @@ class _HomePageState extends State<HomePage> {
                             ],
                           );
                         },
+                      ),
+                      const SizedBox(height: 30),
+
+                      // Complaint shortcut
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const KomplainListPage(),
+                                  ),
+                                );
+                              },
+                              child: const ActionMenuCard(
+                                label: "Komplain",
+                                icon: Icons.report_gmailerrorred_rounded,
+                                bgColor: Color(0xFFF8FAFF),
+                                iconColor: Color(0xFF6366F1),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 30),
 

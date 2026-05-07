@@ -1,4 +1,4 @@
-// import 'package:bbs_sales_app/features/quotation/presentation/pages/quotation_detail_page.dart';
+// import 'package:bbs_driver/features/quotation/presentation/pages/quotation_detail_page.dart';
 import 'package:bbs_driver/features/quotation/presentation/pages/quotation_detail_page.dart';
 import 'package:flutter/material.dart';
 
@@ -140,9 +140,8 @@ class QuotationCard extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => QuotationDetailPage(
-                        quotationId: quotation.id,
-                      ),
+                      builder: (context) =>
+                          QuotationDetailPage(quotationId: quotation.id),
                     ),
                   ),
                 ),

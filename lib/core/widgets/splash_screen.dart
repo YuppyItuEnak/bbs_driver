@@ -1,5 +1,5 @@
 import 'package:bbs_driver/core/constants/app_colors.dart';
-// import 'package:bbs_sales_app/core/constants/app_colors.dart';
+// import 'package:bbs_driver/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatelessWidget {

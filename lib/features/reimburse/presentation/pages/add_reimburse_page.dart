@@ -44,7 +44,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
 
   double _calculatedTotal = 0.0;
 
-  String _selectedType = "Bensin";
+  String _selectedType = "Driver";
   File? _pickedFotoAwal;
   File? _pickedFotoAkhir;
   File? _pickedAttachment;
@@ -62,10 +62,8 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
   @override
   void initState() {
     super.initState();
-    _startKmController.addListener(_calculateReimbursement);
-    _endKmController.addListener(_calculateReimbursement);
-
-    _calculateReimbursement();
+    // Reimburse total is not auto-calculated for driver app (always 0 by default).
+    _setTotalZero();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeForm();
     });
@@ -91,11 +89,11 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
           final item = provider.selected!;
           setState(() {
             _dateController.text = DateFormat('dd/MM/yyyy').format(item.date);
-            _amountController.text = item.total.toString();
+            _setTotalZero();
             _startKmController.text = item.kmAwal.toString();
             _endKmController.text = item.kmAkhir.toString();
             _noteController.text = item.note ?? '';
-            _selectedType = item.type;
+            _selectedType = "Driver";
             _fotoAwalUrl = item.fotoAwal != null && item.fotoAwal!.isNotEmpty
                 ? '${ApiConstants.baseUrl2}/${item.fotoAwal}'
                 : null;
@@ -121,6 +119,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
         // Condition 1: No existing data
         _formMode = FormMode.create;
         _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
+        _setTotalZero();
         _setReadOnlyFlagsForCreate();
       }
     }
@@ -152,8 +151,6 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
 
   @override
   void dispose() {
-    _startKmController.removeListener(_calculateReimbursement);
-    _endKmController.removeListener(_calculateReimbursement);
     _dateController.dispose();
     _amountController.dispose();
     _startKmController.dispose();
@@ -162,28 +159,9 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
     super.dispose();
   }
 
-  void _calculateReimbursement() {
-    final startKm = _parseNumber(_startKmController.text);
-    final endKm = _parseNumber(_endKmController.text);
-
-    if (endKm > startKm) {
-      final selisih = endKm - startKm;
-      _calculatedTotal = (selisih / 30) * 10000;
-
-      _amountController.text = NumberFormat(
-        '#,##0.##',
-        'id_ID',
-      ).format(_calculatedTotal);
-    } else {
-      _calculatedTotal = 0.0;
-      _amountController.text = "0";
-    }
-  }
-
-  double _parseNumber(String text) {
-    if (text.isEmpty) return 0;
-
-    return double.tryParse(text) ?? 0;
+  void _setTotalZero() {
+    _calculatedTotal = 0.0;
+    _amountController.text = "0";
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -288,8 +266,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                                       controller: _endKmController,
                                       hint: "12.500",
                                       readOnly: _isEndKmReadOnly,
-                                      onChanged: (_) =>
-                                          _calculateReimbursement(),
+                                      onChanged: (_) => _setTotalZero(),
                                     ),
                                   ],
                                 ),
@@ -537,17 +514,13 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
           value: _selectedType,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black87),
-          items: ["Bensin"].map((String value) {
+          items: ["Driver"].map((String value) {
             return DropdownMenuItem<String>(
               value: value,
               child: Text(value, style: const TextStyle(fontSize: 13)),
             );
           }).toList(),
-          onChanged: (newValue) {
-            setState(() {
-              _selectedType = newValue!;
-            });
-          },
+          onChanged: null,
         ),
       ),
     );
@@ -741,7 +714,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                           type: newReimburse.type,
                           date: newReimburse.date,
                           unitBusinessId: newReimburse.unitBusinessId,
-                          total: (newReimburse.total! / 30) * 10000,
+                          total: 0,
                           kmAwal: newReimburse.kmAwal,
                           kmAkhir: newReimburse.kmAkhir,
                           note: newReimburse.note,

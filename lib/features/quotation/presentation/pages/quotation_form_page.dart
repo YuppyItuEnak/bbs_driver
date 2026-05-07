@@ -1,10 +1,10 @@
-// import 'package:bbs_sales_app/data/models/customer/customer_address_model.dart';
-// import 'package:bbs_sales_app/data/models/customer/customer_name_model.dart';
-// import 'package:bbs_sales_app/data/models/item/selected_item_model.dart';
-// import 'package:bbs_sales_app/data/models/m_gen_model.dart';
-// import 'package:bbs_sales_app/features/auth/presentation/providers/auth_provider.dart';
-// import 'package:bbs_sales_app/features/quotation/presentation/providers/top_provider.dart';
-// import 'package:bbs_sales_app/features/quotation/presentation/widget/quotation_item_card.dart';
+// import 'package:bbs_driver/data/models/customer/customer_address_model.dart';
+// import 'package:bbs_driver/data/models/customer/customer_name_model.dart';
+// import 'package:bbs_driver/data/models/item/selected_item_model.dart';
+// import 'package:bbs_driver/data/models/m_gen_model.dart';
+// import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
+// import 'package:bbs_driver/features/quotation/presentation/providers/top_provider.dart';
+// import 'package:bbs_driver/features/quotation/presentation/widget/quotation_item_card.dart';
 import 'package:bbs_driver/data/models/customer/customer_address_model.dart';
 import 'package:bbs_driver/data/models/customer/customer_name_model.dart';
 import 'package:bbs_driver/data/models/item/selected_item_model.dart';
@@ -36,8 +36,10 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       if (authProvider.token != null) {
-        Provider.of<TopProvider>(context, listen: false)
-            .fetchTopOptions(authProvider.token!);
+        Provider.of<TopProvider>(
+          context,
+          listen: false,
+        ).fetchTopOptions(authProvider.token!);
       }
     });
   }
@@ -100,8 +102,9 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
     if (newItems != null) {
       setState(() {
         for (var newItem in newItems) {
-          final index = _selectedItems
-              .indexWhere((item) => item.item.id == newItem.item.id);
+          final index = _selectedItems.indexWhere(
+            (item) => item.item.id == newItem.item.id,
+          );
           if (index != -1) {
             _selectedItems[index].quantity += newItem.quantity;
           } else {
@@ -174,7 +177,7 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
                         _selectedAddress!.address,
                         style: const TextStyle(fontSize: 13),
                       ),
-                    ]
+                    ],
                   ],
                 ),
               ),
@@ -188,12 +191,16 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('ToP',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
-                  Row(children: [
-                    Text(_selectedTop?.value1 ?? 'Pilih ToP'),
-                    const Icon(Icons.chevron_right)
-                  ]),
+                  const Text(
+                    'ToP',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  Row(
+                    children: [
+                      Text(_selectedTop?.value1 ?? 'Pilih ToP'),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -224,7 +231,8 @@ class _QuotationFormPageState extends State<QuotationFormPage> {
                     const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final selectedItem = _selectedItems[index];
-                  final subtotal = (selectedItem.item.pricelist?.price ?? 0) *
+                  final subtotal =
+                      (selectedItem.item.pricelist?.price ?? 0) *
                       selectedItem.quantity;
                   return QuotationItemCard(
                     code: selectedItem.item.code,

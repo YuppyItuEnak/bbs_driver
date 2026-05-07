@@ -1,5 +1,5 @@
-// import 'package:bbs_sales_app/data/models/m_gen_model.dart';
-// import 'package:bbs_sales_app/data/services/m_gen_repository.dart';
+// import 'package:bbs_driver/data/models/m_gen_model.dart';
+// import 'package:bbs_driver/data/services/m_gen_repository.dart';
 import 'package:bbs_driver/data/models/m_gen_model.dart';
 import 'package:bbs_driver/data/services/m_gen_repository.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +20,10 @@ class TopProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      _topOptions = await _mGenRepository.fetchMGen('group=m_top_sales_quotation', token);
+      _topOptions = await _mGenRepository.fetchMGen(
+        'group=m_top_sales_quotation',
+        token,
+      );
       _isLoading = false;
       notifyListeners();
     } catch (e) {

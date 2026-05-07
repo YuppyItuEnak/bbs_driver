@@ -1,5 +1,5 @@
 import 'package:bbs_driver/data/models/item/item_model.dart';
-// import 'package:bbs_sales_app/data/models/item/item_model.dart';
+// import 'package:bbs_driver/data/models/item/item_model.dart';
 
 class SelectedItem {
   final ItemModel item;

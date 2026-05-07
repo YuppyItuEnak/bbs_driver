@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/quotation_provider.dart';
-// import 'package:bbs_sales_app/data/models/customer/customer_name_model.dart';
+// import 'package:bbs_driver/data/models/customer/customer_name_model.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 class QuotationFilterModal extends StatefulWidget {

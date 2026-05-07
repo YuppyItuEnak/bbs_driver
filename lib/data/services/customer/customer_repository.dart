@@ -1,8 +1,8 @@
 import 'package:bbs_driver/data/models/customer/customer_address_model.dart';
 import 'package:bbs_driver/data/models/customer/customer_name_model.dart';
-// import 'package:bbs_sales_app/data/models/customer/customer_address_model.dart';
+// import 'package:bbs_driver/data/models/customer/customer_address_model.dart';
 import 'dart:convert';
-// import 'package:bbs_sales_app/data/models/customer/customer_name_model.dart';
+// import 'package:bbs_driver/data/models/customer/customer_name_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../../models/customer/customer_model.dart';

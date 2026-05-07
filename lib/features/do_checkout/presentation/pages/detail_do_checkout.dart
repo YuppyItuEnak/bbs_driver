@@ -86,7 +86,7 @@ class _DetailDoCheckoutState extends State<DetailDoCheckout> {
                   ),
                 ),
               ),
-              _buildBottomButton(),
+              _buildBottomButton(model),
             ],
           ),
         );
@@ -269,7 +269,7 @@ class _DetailDoCheckoutState extends State<DetailDoCheckout> {
 
   // ================= BUTTON =================
 
-  Widget _buildBottomButton() {
+  Widget _buildBottomButton(DeliveryOrderModel? model) {
     return Padding(
       padding: const EdgeInsets.all(20),
       child: SizedBox(
@@ -291,7 +291,7 @@ class _DetailDoCheckoutState extends State<DetailDoCheckout> {
             if (checkInStatus['has_open'] == true) {
               final data = checkInStatus['data'] as List;
               for (var item in data) {
-                if (item['t_surat_jalan_id'] == widget.doId &&
+                if (item['delivery_plan_id'] == model?.deliveryPlanId &&
                     item['time_out'] == null) {
                   checkInRecordId = item['id'];
                   break;
@@ -300,12 +300,24 @@ class _DetailDoCheckoutState extends State<DetailDoCheckout> {
             }
 
             if (checkInRecordId != null) {
+              final deliveryPlanId = model?.deliveryPlanId;
+              if (deliveryPlanId == null || deliveryPlanId.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Delivery plan ID tidak ditemukan'),
+                  ),
+                );
+                return;
+              }
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => DoCheckoutPage(
-                    doId: widget.doId,
-                    checkInId: checkInRecordId,
+                    doIds: [widget.doId],
+                    doCodes: [model?.code ?? widget.doId],
+                    customerName: model?.customer ?? '-',
+                    deliveryPlanId: deliveryPlanId,
+                    realisasiId: checkInRecordId,
                   ),
                 ),
               );

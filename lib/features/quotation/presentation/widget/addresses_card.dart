@@ -1,5 +1,5 @@
 import 'package:bbs_driver/data/models/customer/customer_address_model.dart';
-// import 'package:bbs_sales_app/data/models/customer/customer_address_model.dart';
+// import 'package:bbs_driver/data/models/customer/customer_address_model.dart';
 import 'package:flutter/material.dart';
 
 class AddressCard extends StatelessWidget {
@@ -46,10 +46,7 @@ class AddressCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
-              address.address,
-              style: const TextStyle(fontSize: 13),
-            ),
+            Text(address.address, style: const TextStyle(fontSize: 13)),
             if (address.notes.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
@@ -60,21 +57,14 @@ class AddressCard extends StatelessWidget {
             const SizedBox(height: 12),
             Row(
               children: [
-                if (address.isActive)
-                  _Tag(label: 'Aktif', color: Colors.green),
+                if (address.isActive) _Tag(label: 'Aktif', color: Colors.green),
                 const SizedBox(width: 8),
                 if (address.isDefault)
                   _Tag(label: 'Default', color: const Color(0xFF5F6BF7)),
                 const Spacer(),
-                const Text(
-                  'Edit',
-                  style: TextStyle(color: Color(0xFF5F6BF7)),
-                ),
+                const Text('Edit', style: TextStyle(color: Color(0xFF5F6BF7))),
                 const SizedBox(width: 16),
-                const Text(
-                  'Hapus',
-                  style: TextStyle(color: Colors.red),
-                ),
+                const Text('Hapus', style: TextStyle(color: Colors.red)),
               ],
             ),
           ],
@@ -98,10 +88,7 @@ class _Tag extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: color),
       ),
-      child: Text(
-        label,
-        style: TextStyle(fontSize: 12, color: color),
-      ),
+      child: Text(label, style: TextStyle(fontSize: 12, color: color)),
     );
   }
 }

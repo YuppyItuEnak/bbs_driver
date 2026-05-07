@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/data/models/item/item_model.dart';
-// import 'package:bbs_sales_app/data/models/item/item_model.dart';
+// import 'package:bbs_driver/data/models/item/item_model.dart';
 import 'package:http/http.dart' as http;
-// import 'package:bbs_sales_app/core/constants/api_constants.dart';
+// import 'package:bbs_driver/core/constants/api_constants.dart';
 
 class ItemRepository {
   final String baseUrl = ApiConstants.baseUrl;

@@ -2,11 +2,9 @@ import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart'
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/pages/detail_do_page.dart';
 import 'package:bbs_driver/features/home/presentation/pages/home_page.dart';
-import 'package:bbs_driver/features/do_checkin/presentation/pages/do_sudah_confirm_page.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class DoBelumConfirmPage extends StatefulWidget {
   const DoBelumConfirmPage({super.key});
@@ -23,7 +21,10 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _fetchData();
+    });
     _scrollController.addListener(_onScroll);
   }
 
@@ -184,10 +185,69 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
                             return;
                           }
 
+                          // Enforce: DO yang dikonfirmasi harus 1 delivery_plan_id yang sama
+                          final selectedDo = doProvider.doList
+                              .where((d) => selectedIds.contains(d.id))
+                              .toList();
+                          final uniqueDeliveryPlanIds = selectedDo
+                              .map((d) => d.deliveryPlanId)
+                              .whereType<String>()
+                              .toSet();
+                          if (uniqueDeliveryPlanIds.length > 1) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Konfirmasi DO gagal: delivery plan berbeda.",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          final dpId = uniqueDeliveryPlanIds.isEmpty
+                              ? null
+                              : uniqueDeliveryPlanIds.first;
+                          if (dpId == null || dpId.isEmpty) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Konfirmasi DO gagal: delivery plan tidak ditemukan.",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          final isDpCheckedOut = await doProvider
+                              .isDeliveryPlanCheckedOutToday(
+                                token: token,
+                                userId: userId,
+                                deliveryPlanId: dpId,
+                              );
+                          if (isDpCheckedOut) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Delivery plan sudah check-out hari ini. Tidak bisa tambah DO untuk delivery plan yang sama.",
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          // New rule:
+                          // - If user confirms a DO under a delivery plan, all DO under that DP are confirmed.
+                          final allDoInDp = doProvider.doList
+                              .where((d) => d.deliveryPlanId == dpId)
+                              .map((d) => d.id)
+                              .toList();
+
                           try {
                             await doProvider.confirmDo(
                               token: token,
-                              doIds: selectedIds,
+                              doIds: allDoInDp,
                               userId: userId,
                             );
                             Navigator.pop(context); // pop the confirmation dialog
@@ -399,7 +459,19 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
             child: InkWell(
               onTap: () {
                 setState(() {
-                  _selectedMap[item.id] = !isSelected;
+                  final next = !isSelected;
+                  final dpId = item.deliveryPlanId;
+                  if (dpId != null && dpId.isNotEmpty) {
+                    final sameDp = context
+                        .read<DoProvider>()
+                        .doList
+                        .where((d) => d.deliveryPlanId == dpId);
+                    for (final d in sameDp) {
+                      _selectedMap[d.id] = next;
+                    }
+                  } else {
+                    _selectedMap[item.id] = next;
+                  }
                 });
               },
               child: Container(

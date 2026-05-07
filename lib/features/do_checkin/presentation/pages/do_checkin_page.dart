@@ -13,8 +13,17 @@ import 'package:provider/provider.dart';
 import '../widgets/checkin_item.dart';
 
 class DoCheckinPage extends StatefulWidget {
-  final String doId;
-  const DoCheckinPage({super.key, required this.doId});
+  final List<String> doIds;
+  final List<String> doCodes;
+  final String customerName;
+  final String deliveryPlanId;
+  const DoCheckinPage({
+    super.key,
+    required this.doIds,
+    required this.doCodes,
+    required this.customerName,
+    required this.deliveryPlanId,
+  });
 
   @override
   State<DoCheckinPage> createState() => _DoCheckinPageState();
@@ -300,9 +309,16 @@ class _DoCheckinPageState extends State<DoCheckinPage> {
       final now = DateTime.now().toUtc();
       final timeIn = now.toIso8601String();
 
+      final userId = authProvider.user?.id;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('User ID tidak ditemukan');
+      }
+
       await doProvider.checkIn(
         token: authProvider.token!,
-        doId: widget.doId,
+        doIds: widget.doIds,
+        deliveryPlanId: widget.deliveryPlanId,
+        userId: userId,
         timeIn: timeIn,
         latIn: _latitude,
         longIn: _longitude,
@@ -404,6 +420,18 @@ class _DoCheckinPageState extends State<DoCheckinPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        CheckinItem.infoTile(
+                          label: "Customer",
+                          value: widget.customerName,
+                        ),
+                        const SizedBox(height: 12),
+                        CheckinItem.infoTile(
+                          label: "Surat Jalan",
+                          value: widget.doCodes.isEmpty
+                              ? "-"
+                              : widget.doCodes.join(", "),
+                        ),
+                        const SizedBox(height: 20),
                         CheckinItem.infoTile(
                           label: "Tanggal",
                           value: _currentDateTime.isNotEmpty
