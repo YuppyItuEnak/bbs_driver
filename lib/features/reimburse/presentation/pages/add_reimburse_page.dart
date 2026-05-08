@@ -53,6 +53,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
   FormMode _formMode = FormMode.create;
 
   // ReadOnly flags for conditional editing
+  bool _isDateReadOnly = false;
   bool _isStartKmReadOnly = false;
   bool _isEndKmReadOnly = false;
   bool _isNoteReadOnly = false;
@@ -82,9 +83,10 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
 
       final checkData = provider.reimburseCheck;
 
-      if (checkData != null) {
+      final targetId = widget.reimburseId ?? checkData?.id;
+      if (targetId != null) {
         // Load existing data
-        await provider.getDetail(auth.token!, checkData.id);
+        await provider.getDetail(auth.token!, targetId);
         if (provider.selected != null) {
           final item = provider.selected!;
           setState(() {
@@ -104,13 +106,14 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
         }
 
         // Determine form mode based on existing data
-        if (checkData.kmAwal != null &&
-            (checkData.kmAkhir == null || checkData.kmAkhir == 0)) {
+        final kmAwal = provider.selected?.kmAwal;
+        final kmAkhir = provider.selected?.kmAkhir;
+        if (kmAwal != null && (kmAkhir == null || kmAkhir == 0)) {
           setState(() {
             _formMode = FormMode.update;
             _setReadOnlyFlagsForUpdate();
           });
-        } else if (checkData.kmAwal != null && checkData.kmAkhir != null) {
+        } else if (kmAwal != null && kmAkhir != null && kmAkhir != 0) {
           // Condition 3: Complete data
           _formMode = FormMode.fullEdit;
           _setReadOnlyFlagsForFullEdit();
@@ -126,6 +129,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
   }
 
   void _setReadOnlyFlagsForCreate() {
+    _isDateReadOnly = true;
     _isStartKmReadOnly = false;
     _isEndKmReadOnly = true;
     _isNoteReadOnly = true;
@@ -134,14 +138,16 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
   }
 
   void _setReadOnlyFlagsForUpdate() {
+    _isDateReadOnly = true;
     _isStartKmReadOnly = true;
     _isEndKmReadOnly = false;
-    _isNoteReadOnly = false;
+    _isNoteReadOnly = true;
     _isFotoAwalReadOnly = true;
     _isFotoAkhirReadOnly = false;
   }
 
   void _setReadOnlyFlagsForFullEdit() {
+    _isDateReadOnly = true;
     _isStartKmReadOnly = true;
     _isEndKmReadOnly = true;
     _isNoteReadOnly = true;
@@ -230,8 +236,8 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                           controller: _dateController,
                           hint: "dd/MM/yyyy",
                           icon: Icons.calendar_today_outlined,
-                          readOnly: false,
-                          onTap: () => _selectDate(context),
+                          readOnly: _isDateReadOnly,
+                          onTap: _isDateReadOnly ? null : () => _selectDate(context),
                         ),
                         const SizedBox(height: 20),
 
@@ -239,8 +245,8 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                         _buildDropdown(),
                         const SizedBox(height: 20),
 
-                        // Form Dinamis berdasarkan Tipe
-                        if (_selectedType == "Bensin") ...[
+                        // Driver reimburse uses KM awal/akhir + photo awal/akhir (step-based)
+                        if (_selectedType == "Driver") ...[
                           Row(
                             children: [
                               Expanded(
@@ -551,36 +557,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
         InkWell(
           onTap: readOnly
               ? null
-              : () {
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return SafeArea(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt),
-                              title: const Text('Camera'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _pickImage(ImageSource.camera, onImagePicked);
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.image),
-                              title: const Text('Gallery'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _pickImage(ImageSource.gallery, onImagePicked);
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                },
+              : () => _pickImage(ImageSource.camera, onImagePicked),
           child: Container(
             height: height,
             width: double.infinity,
@@ -669,6 +646,63 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                         return;
                       }
 
+                      // Validate required fields per step.
+                      if (_selectedType == 'Driver') {
+                        final kmAwal = double.tryParse(_startKmController.text) ?? 0;
+                        final kmAkhir = double.tryParse(_endKmController.text) ?? 0;
+
+                        if (_formMode == FormMode.create) {
+                          if (kmAwal <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('KM awal wajib diisi.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (_pickedFotoAwal == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Foto KM awal wajib diisi.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                        }
+
+                        if (_formMode == FormMode.update) {
+                          if (kmAkhir <= 0) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('KM akhir wajib diisi.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (_pickedFotoAkhir == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Foto KM akhir wajib diisi.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                          if (kmAwal > 0 && kmAkhir > 0 && kmAkhir < kmAwal) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('KM akhir tidak boleh kurang dari KM awal.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+                        }
+                      }
+
                       DateTime? date;
                       try {
                         date = DateFormat(
@@ -688,7 +722,7 @@ class _AddReimburseContentState extends State<_AddReimburseContent> {
                         salesId: auth.user!.id!,
                         type: _selectedType,
                         date: date!,
-                        unitBusinessId: "",
+                        unitBusinessId: auth.unitBusinessId ?? "",
                         total: _calculatedTotal,
                         kmAwal: double.tryParse(_startKmController.text) ?? 0,
                         kmAkhir: double.tryParse(_endKmController.text) ?? 0,

@@ -93,7 +93,8 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
           }
 
           final item = provider.selected!;
-          final isBensin = item.type == "Bensin";
+          final typeLower = (item.type).toLowerCase();
+          final usesKmFlow = typeLower == 'driver' || typeLower == 'bensin';
           final dateStr = item.date != null
               ? DateFormat('dd MMMM yyyy', 'id_ID').format(item.date!)
               : '-';
@@ -184,8 +185,8 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
                         ),
                         const SizedBox(height: 16),
 
-                        // KM INFO (HANYA BENSIN)
-                        if (isBensin) ...[
+                        // KM INFO (Driver/Bensin flow)
+                        if (usesKmFlow) ...[
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -261,13 +262,13 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
 
                         const SizedBox(height: 24),
                         const Text(
-                          "Attachment",
+                          "Lampiran",
                           style: TextStyle(fontSize: 11, color: Colors.grey),
                         ),
                         const SizedBox(height: 12),
 
                         // ATTACHMENT DISPLAY
-                        if (isBensin)
+                        if (usesKmFlow)
                           Row(
                             children: [
                               Expanded(

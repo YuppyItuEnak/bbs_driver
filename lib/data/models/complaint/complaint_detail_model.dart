@@ -41,10 +41,14 @@ class ComplainDetailModel {
   });
 
   factory ComplainDetailModel.fromJson(Map<String, dynamic> json) {
+    final mCustomer = json['m_customer'];
+    final dynamic rawItems = json['t_complain_ds'] ?? json['t_complain_d'];
+
     return ComplainDetailModel(
       id: json['id']?.toString() ?? '',
       code: json['code'],
-      customer: json['customer'],
+      customer: json['customer'] ??
+          (mCustomer is Map<String, dynamic> ? mCustomer['name'] : null),
       customerId: json['customer_id']?.toString(),
       refType: json['ref_type'],
       siId: json['si_id']?.toString(),
@@ -59,7 +63,7 @@ class ComplainDetailModel {
       approvalCount: json['approval_count'],
       approvedCount: json['approved_count'],
       currentApprovalLevel: json['current_approval_level'],
-      items: (json['t_complain_ds'] as List? ?? [])
+      items: (rawItems as List? ?? [])
           .map((e) => ComplainItemModel.fromJson(e))
           .toList(),
     );
@@ -92,10 +96,12 @@ class ComplainItemModel {
   });
 
   factory ComplainItemModel.fromJson(Map<String, dynamic> json) {
+    final mItem = json['m_item'];
     return ComplainItemModel(
       id: json['id'],
       itemId: json['item_id'],
-      itemName: json['item_name'],
+      itemName: json['item_name'] ??
+          (mItem is Map<String, dynamic> ? mItem['name'] : null),
       qtyRef: json['qty_ref'],
       qtyReturn: json['qty_return'],
       uomUnit: json['uom_unit'],

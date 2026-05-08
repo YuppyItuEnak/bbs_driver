@@ -28,27 +28,49 @@ class _KomplainListContent extends StatefulWidget {
 }
 
 class _KomplainListContentState extends State<_KomplainListContent> {
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchData();
     });
+    _scrollController.addListener(_onScroll);
   }
 
-  void _fetchData([String? search]) {
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final position = _scrollController.position;
+    if (position.pixels >= position.maxScrollExtent - 200) {
+      context.read<ComplaintListProvider>().fetchNextPage();
+    }
+  }
+
+  Future<void> _fetchData([String? search]) async {
     final auth = context.read<AuthProvider>();
     final provider = context.read<ComplaintListProvider>();
 
     if (auth.token != null &&
         auth.user?.id != null &&
         auth.unitBusinessId != null) {
-      provider.fetchComplaints(
+      await provider.fetchComplaints(
         token: auth.token!,
         salesId: auth.user!.id!,
         unitBusinessId: auth.unitBusinessId!,
         search: search,
+        paginate: 10,
       );
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
     }
   }
 
@@ -101,16 +123,39 @@ class _KomplainListContentState extends State<_KomplainListContent> {
                   }
 
                   if (provider.items.isEmpty) {
-                    return const Center(child: Text("Data tidak ditemukan"));
+                    return RefreshIndicator(
+                      onRefresh: () async => _fetchData(),
+                      child: ListView(
+                        controller: _scrollController,
+                        children: const [
+                          SizedBox(height: 200),
+                          Center(child: Text("Data tidak ditemukan")),
+                        ],
+                      ),
+                    );
                   }
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: provider.items.length,
-                    itemBuilder: (context, index) {
-                      final item = provider.items[index];
-                      return _buildKomplainTile(item);
-                    },
+                  return RefreshIndicator(
+                    onRefresh: () async => _fetchData(),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: provider.items.length +
+                          ((provider.hasMore || provider.isLoadingMore) ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index >= provider.items.length) {
+                          if (provider.isLoadingMore) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+                          return const SizedBox(height: 80);
+                        }
+                        final item = provider.items[index];
+                        return _buildKomplainTile(item);
+                      },
+                    ),
                   );
                 },
               ),

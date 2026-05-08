@@ -56,7 +56,7 @@ class SuratJalanRepository {
     };
 
     final Uri uri = Uri.parse(
-      '${ApiConstants.baseUrl}/dynamic/t_surat_jalan/$id?include=t_surat_jalan_d',
+      '${ApiConstants.baseUrl}/dynamic/t_surat_jalan/$id?include=m_unit_bussiness,m_customer,user_default,t_surat_jalan_d,t_surat_jalan_d>m_item',
     );
     if (kDebugMode) {
       print("URI: $uri");

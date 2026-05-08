@@ -9,6 +9,7 @@ import 'package:bbs_driver/data/services/customer/customer_repository.dart';
 import 'package:bbs_driver/data/services/general/m_gen_repository.dart';
 import 'package:bbs_driver/data/services/delivery_order/surat_jalan_repository.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -130,9 +131,10 @@ class ComplaintFormProvider extends ChangeNotifier {
           customerId: _selectedCustomer!.id!,
         );
         if (detail.sjId != null) {
-          _selectedSuratJalan = _suratJalan
-              .cast<SuratJalanModel?>()
-              .firstWhere((e) => e?.id == detail.sjId, orElse: () => null);
+          _selectedSuratJalan = _suratJalan.cast<SuratJalanModel?>().firstWhere(
+            (e) => e?.id == detail.sjId,
+            orElse: () => null,
+          );
         }
       }
 
@@ -247,7 +249,7 @@ class ComplaintFormProvider extends ChangeNotifier {
 
   Future<void> pickImageForItem(int index) async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
 
     if (image != null) {
       _items[index].imageFiles.add(File(image.path));
@@ -277,26 +279,53 @@ class ComplaintFormProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final now = DateTime.now();
       final data = ComplainCreateModel()
         ..customerId = _selectedCustomer!.id
+        ..customer = _selectedCustomer!.name
         ..complainTypeId = _selectedComplaintType!.id
+        ..complainType = _selectedComplaintType!.value1
         ..salesId = salesId
+        ..sales = salesId
         ..unitBusinessId = unitBusinessId
-        ..date = DateTime.now()
+        ..unitBusiness = _selectedSuratJalan?.unitBussiness
+        ..date = now
         ..status = 1
         ..notes = contactPersonCtrl.text
         ..items = _items
-        ..refType = 'SJ'
+        ..refType = 'sj'
         ..sjId = _selectedSuratJalan!.id;
 
       if (_editingComplaintId != null && _editingComplaintId!.isNotEmpty) {
-        await _complainRepo.updateComplaint(
+        data
+          ..requestApprovalBy = salesId
+          ..requestApprovalAt = now
+          ..updatedBy = salesId;
+        if (kDebugMode) {
+          debugPrint(
+            '[COMPLAIN_FORM] update id=$_editingComplaintId sj_id=${data.sjId} items=${data.items.length}',
+          );
+        }
+        await _complainRepo.updateComplaintWithDetails(
           token: token,
           id: _editingComplaintId!,
           data: data,
         );
       } else {
-        await _complainRepo.createComplaint(token: token, data: data);
+        data
+          ..requestApprovalBy = salesId
+          ..requestApprovalAt = now
+          ..createdBy = salesId
+          ..updatedBy = salesId;
+        if (kDebugMode) {
+          debugPrint(
+            '[COMPLAIN_FORM] create sj_id=${data.sjId} items=${data.items.length}',
+          );
+        }
+        await _complainRepo.createComplaintWithDetails(
+          token: token,
+          data: data,
+        );
       }
       _isLoading = false;
       notifyListeners();

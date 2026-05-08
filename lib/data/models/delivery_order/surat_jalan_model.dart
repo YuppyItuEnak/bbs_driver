@@ -57,6 +57,8 @@ class SuratJalanModel {
   });
 
   factory SuratJalanModel.fromJson(Map<String, dynamic> json) {
+    final mCustomer = json['m_customer'];
+    final mUnitBusiness = json['m_unit_bussiness'];
     return SuratJalanModel(
       id: json['id'],
       deliveryPlanId: json['delivery_plan_id'],
@@ -76,8 +78,10 @@ class SuratJalanModel {
       shipTo: json['ship_to'],
       npwp: json['npwp'],
       soId: json['so_id'],
-      unitBussiness: json['unit_bussiness'],
-      customer: json['customer'],
+      unitBussiness: json['unit_bussiness'] ??
+          (mUnitBusiness is Map<String, dynamic> ? mUnitBusiness['name'] : null),
+      customer: json['customer'] ??
+          (mCustomer is Map<String, dynamic> ? mCustomer['name'] : null),
       deliveryArea: json['delivery_area'],
       vehicle: json['vehicle'],
       nopol: json['nopol'],
@@ -130,6 +134,7 @@ class SuratJalanDetailModel {
   });
 
   factory SuratJalanDetailModel.fromJson(Map<String, dynamic> json) {
+    final mItem = json['m_item'];
     return SuratJalanDetailModel(
       suratJalanId: json['surat_jalan_id'],
       itemId: json['item_id'],
@@ -142,11 +147,12 @@ class SuratJalanDetailModel {
       qtyReturn: json['qty_return'] is int
           ? json['qty_return']
           : int.tryParse(json['qty_return']!.toString()),
-      itemName: json['item_name'],
+      itemName: json['item_name'] ??
+          (mItem is Map<String, dynamic> ? mItem['name'] : null),
       qtySnapshot: json['qty_snapshot'] is int
           ? json['qty_snapshot']
           : int.tryParse(json['qty_snapshot']!.toString()),
-      uomUnit: json['uom_unit'] as String,
+      uomUnit: (json['uom_unit'] ?? '') as String,
       uomValue: json['uom_value'] is int
           ? json['uom_value']
           : int.tryParse(json['uom_value']?.toString() ?? '0') ?? 0,

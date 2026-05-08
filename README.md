@@ -1,4 +1,4 @@
-# bbs_sales_app
+# bbs_driver
 
 A new Flutter project.
 
