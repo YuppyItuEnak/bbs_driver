@@ -32,25 +32,26 @@ class _HomePageState extends State<HomePage> {
     final token = context.read<AuthProvider>().token;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AuthProvider>(context, listen: false).fetchUserDetails().then(
-        (_) {
-          final auth = Provider.of<AuthProvider>(context, listen: false);
-          final doProvider = Provider.of<DoProvider>(context, listen: false);
-          if (auth.token != null && auth.user?.id != null) {
-            doProvider.checkOpenTimeIn(
-              token: auth.token!,
-              userId: auth.user!.id,
-            );
-            doProvider.refreshHasConfirmedDo(
-              token: auth.token!,
-              userId: auth.user!.id,
-            );
-            doProvider.refreshDoMasukTotal(token: auth.token!);
-          }
-        },
-      );
+      Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).fetchUserDetails().then((_) {
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        final doProvider = Provider.of<DoProvider>(context, listen: false);
+        if (auth.token != null && auth.user?.id != null) {
+          doProvider.checkOpenTimeIn(token: auth.token!, userId: auth.user!.id);
+          doProvider.refreshHasConfirmedDo(
+            token: auth.token!,
+            userId: auth.user!.id,
+          );
+          doProvider.refreshDoMasukTotal(token: auth.token!);
+        }
+      });
       if (token != null) {
-        Provider.of<DoProvider>(context, listen: false).fetchDoMasuk(token: token);
+        Provider.of<DoProvider>(
+          context,
+          listen: false,
+        ).fetchDoMasuk(token: token);
       }
     });
   }
@@ -122,13 +123,13 @@ class _HomePageState extends State<HomePage> {
         final userId = auth.user?.id;
         if (token != null && userId != null && context.mounted) {
           await context.read<DoProvider>().checkOpenTimeIn(
-                token: token,
-                userId: userId,
-              );
+            token: token,
+            userId: userId,
+          );
           await context.read<DoProvider>().refreshHasConfirmedDo(
-                token: token,
-                userId: userId,
-              );
+            token: token,
+            userId: userId,
+          );
           await context.read<DoProvider>().refreshDoMasukTotal(token: token);
         }
       },
@@ -166,49 +167,25 @@ class _HomePageState extends State<HomePage> {
                                 child: GestureDetector(
                                   onTap: canCheckIn
                                       ? () {
-                                          final auth = context.read<AuthProvider>();
+                                          final auth = context
+                                              .read<AuthProvider>();
                                           final token = auth.token;
                                           final userId = auth.user?.id;
-                                          if (token == null || userId == null) return;
-
-                                          context
-                                              .read<DoProvider>()
-                                              .getConfirmedDeliveryPlanIds(
-                                                token: token,
-                                                userId: userId,
-                                              )
-                                              .then((ids) {
-                                            if (!context.mounted) return;
-                                            if (ids.isEmpty) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('Belum ada DO yang dikonfirmasi'),
-                                                ),
-                                              );
-                                              return;
-                                            }
-                                            if (ids.length > 1) {
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('Delivery plan lebih dari 1, cek DO yang dikonfirmasi'),
-                                                ),
-                                              );
-                                              return;
-                                            }
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => DpCheckinPage(
-                                                  deliveryPlanId: ids.first,
-                                                ),
-                                              ),
-                                            );
-                                          });
+                                          if (token == null || userId == null)
+                                            return;
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const DpCheckinPage(),
+                                            ),
+                                          );
                                         }
                                       : null,
                                   child: ActionMenuCard(
                                     label: "Check In",
-                                    sublabel: 'Sisa DO: ${doProvider.doMasukTotal}',
+                                    sublabel:
+                                        'Sisa DO: ${doProvider.doMasukTotal}',
                                     icon: Icons.login_rounded,
                                     bgColor: canCheckIn
                                         ? const Color(0xFFE8F9EE)
@@ -226,13 +203,20 @@ class _HomePageState extends State<HomePage> {
                                 child: GestureDetector(
                                   onTap: hasOpen
                                       ? () {
-                                          final auth = context.read<AuthProvider>();
+                                          final auth = context
+                                              .read<AuthProvider>();
                                           final token = auth.token;
                                           final userId = auth.user?.id;
-                                          if (token == null || userId == null) return;
+                                          if (token == null || userId == null)
+                                            return;
 
-                                          final data = doProvider.checkInStatus['data'] as List? ?? const [];
-                                          final open = data.cast<dynamic>().firstWhere(
+                                          final data =
+                                              doProvider.checkInStatus['data']
+                                                  as List? ??
+                                              const [];
+                                          final open = data
+                                              .cast<dynamic>()
+                                              .firstWhere(
                                                 (e) =>
                                                     e is Map &&
                                                     e['time_in'] != null &&
@@ -240,17 +224,26 @@ class _HomePageState extends State<HomePage> {
                                                 orElse: () => null,
                                               );
 
-                                          final realisasiId =
-                                              (open is Map) ? open['id']?.toString() : null;
-                                          final deliveryPlanId =
-                                              (open is Map) ? open['delivery_plan_id']?.toString() : null;
+                                          final realisasiId = (open is Map)
+                                              ? open['id']?.toString()
+                                              : null;
+                                          final deliveryPlanId = (open is Map)
+                                              ? open['delivery_plan_id']
+                                                    ?.toString()
+                                              : null;
 
                                           if (realisasiId == null ||
                                               realisasiId.isEmpty ||
                                               deliveryPlanId == null ||
                                               deliveryPlanId.isEmpty) {
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              const SnackBar(content: Text('Data check-in tidak ditemukan')),
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Data check-in tidak ditemukan',
+                                                ),
+                                              ),
                                             );
                                             return;
                                           }
@@ -264,7 +257,7 @@ class _HomePageState extends State<HomePage> {
                                               ),
                                             ),
                                           );
-                                      }
+                                        }
                                       : null,
                                   child: ActionMenuCard(
                                     label: "Check Out",

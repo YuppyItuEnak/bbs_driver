@@ -12,12 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 class DpCheckinPage extends StatefulWidget {
-  final String deliveryPlanId;
-
-  const DpCheckinPage({
-    super.key,
-    required this.deliveryPlanId,
-  });
+  const DpCheckinPage({super.key});
 
   @override
   State<DpCheckinPage> createState() => _DpCheckinPageState();
@@ -100,7 +95,9 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
     }
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Izin kamera diperlukan untuk mengambil foto')),
+      const SnackBar(
+        content: Text('Izin kamera diperlukan untuk mengambil foto'),
+      ),
     );
   }
 
@@ -160,15 +157,15 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
     AuthProvider authProvider,
   ) async {
     if (_image == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto wajib diambil')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Foto wajib diambil')));
       return;
     }
     if (_latitude.isEmpty || _longitude.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lokasi belum didapatkan')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Lokasi belum didapatkan')));
       return;
     }
 
@@ -183,7 +180,7 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
 
       await doProvider.checkInDeliveryPlanOnly(
         token: token,
-        deliveryPlanId: widget.deliveryPlanId,
+          deliveryPlanId: '',
         userId: userId,
         timeIn: timeIn,
         latIn: _latitude,
@@ -195,14 +192,16 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(builder: (_) => const HomePage(startAsCheckedIn: true)),
+        MaterialPageRoute(
+          builder: (_) => const HomePage(startAsCheckedIn: true),
+        ),
         (route) => false,
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Check-in gagal: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Check-in gagal: $e')));
     } finally {
       if (mounted) setState(() => _isCheckingIn = false);
     }
@@ -237,7 +236,9 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
                 builder: (context, constraints) {
                   return SingleChildScrollView(
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
                       child: IntrinsicHeight(
                         child: Column(
                           children: [
@@ -281,7 +282,9 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
                                     "Alamat",
                                     _isLoadingLocation
                                         ? "Mencari lokasi..."
-                                        : (_address.isNotEmpty ? _address : "-"),
+                                        : (_address.isNotEmpty
+                                              ? _address
+                                              : "-"),
                                   ),
                                   const SizedBox(height: 20),
                                   Row(
@@ -289,13 +292,17 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
                                       Expanded(
                                         child: _infoTile(
                                           "Longitude",
-                                          _longitude.isNotEmpty ? _longitude : "-",
+                                          _longitude.isNotEmpty
+                                              ? _longitude
+                                              : "-",
                                         ),
                                       ),
                                       Expanded(
                                         child: _infoTile(
                                           "Latitude",
-                                          _latitude.isNotEmpty ? _latitude : "-",
+                                          _latitude.isNotEmpty
+                                              ? _latitude
+                                              : "-",
                                         ),
                                       ),
                                     ],
@@ -308,14 +315,16 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
                                       onPressed: _isCheckingIn
                                           ? null
                                           : () => _performCheckIn(
-                                                context,
-                                                doProvider,
-                                                authProvider,
-                                              ),
+                                              context,
+                                              doProvider,
+                                              authProvider,
+                                            ),
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: primaryGreen,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(25),
+                                          borderRadius: BorderRadius.circular(
+                                            25,
+                                          ),
                                         ),
                                       ),
                                       child: const Text(
@@ -330,7 +339,10 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
                                   const SizedBox(height: 10),
                                   Text(
                                     "Check-in ini hanya untuk Delivery Plan Realisasi.",
-                                    style: TextStyle(color: greyText, fontSize: 11),
+                                    style: TextStyle(
+                                      color: greyText,
+                                      fontSize: 11,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -363,4 +375,3 @@ class _DpCheckinPageState extends State<DpCheckinPage> {
     );
   }
 }
-

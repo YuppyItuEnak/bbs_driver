@@ -185,36 +185,33 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
                         ),
                         const SizedBox(height: 16),
 
-                        // KM INFO (Driver/Bensin flow)
-                        if (usesKmFlow) ...[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              _buildDetailItem(
-                                "KM Awal",
-                                NumberFormat(
-                                  '#,##0',
-                                  'id_ID',
-                                ).format(item.kmAwal ?? 0.0),
+                        // KM INFO
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildDetailItem(
+                              "KM Awal",
+                              NumberFormat(
+                                '#,##0',
+                                'id_ID',
+                              ).format(item.kmAwal ?? 0),
+                            ),
+                            _buildDetailItem(
+                              "KM Akhir",
+                              NumberFormat(
+                                '#,##0',
+                                'id_ID',
+                              ).format(item.kmAkhir ?? 0),
+                            ),
+                            _buildDetailItem(
+                              "Total KM",
+                              NumberFormat('#,##0', 'id_ID').format(
+                                (item.kmAkhir ?? 0) - (item.kmAwal ?? 0),
                               ),
-                              _buildDetailItem(
-                                "KM Akhir",
-                                NumberFormat(
-                                  '#,##0',
-                                  'id_ID',
-                                ).format(item.kmAkhir ?? 0.0),
-                              ),
-                              _buildDetailItem(
-                                "Total KM",
-                                NumberFormat(
-                                  '#,##0',
-                                  'id_ID',
-                                ).format(item.totalKm ?? 0.0),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
 
                         // TOTAL AMOUNT BOX
                         Container(
@@ -268,31 +265,23 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
                         const SizedBox(height: 12),
 
                         // ATTACHMENT DISPLAY
-                        if (usesKmFlow)
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildImageFrame(
-                                  "Foto KM awal",
-                                  item.fotoAwal,
-                                ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildImageFrame(
+                                "Foto KM awal",
+                                item.fotoAwal,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildImageFrame(
-                                  "Foto KM akhir",
-                                  item.fotoAkhir,
-                                ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildImageFrame(
+                                "Foto KM akhir",
+                                item.fotoAkhir,
                               ),
-                            ],
-                          )
-                        else if (item.fotoAwal != null)
-                          _buildImageFrame(null, item.fotoAwal)
-                        else
-                          const Text(
-                            'No attachment available.',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),

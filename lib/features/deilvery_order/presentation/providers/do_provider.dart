@@ -13,6 +13,7 @@ class DoProvider extends ChangeNotifier {
   // Values: check_in | check_out | done
   String _homeActionState = 'check_in';
   bool _hasConfirmedDo = false;
+  bool _hasOutstandingDo = false;
 
   List<DeliveryOrderModel> _doList = [];
   int _doMasukTotal = 0;
@@ -39,8 +40,9 @@ class DoProvider extends ChangeNotifier {
   Map<String, dynamic> get checkInStatus => _checkInStatus;
   bool get canCheckIn => _checkInStatus['has_open'] == false;
   bool get hasConfirmedDo => _hasConfirmedDo;
+  bool get hasOutstandingDo => _hasOutstandingDo;
   bool get homeCheckInEnabled =>
-      _homeActionState == 'check_in' && _hasConfirmedDo;
+      _homeActionState == 'check_in' && _hasOutstandingDo;
   bool get homeCheckOutEnabled => _homeActionState == 'check_out';
   bool get homeDone => _homeActionState == 'done';
 
@@ -267,10 +269,7 @@ class DoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> checkOpenTimeIn({
-    required String token,
-    String? userId,
-  }) async {
+  Future<void> checkOpenTimeIn({required String token, String? userId}) async {
     try {
       if (userId != null && userId.isNotEmpty) {
         final rows = await _repository.fetchTodayDeliveryPlanRealisasi(
@@ -301,10 +300,10 @@ class DoProvider extends ChangeNotifier {
         _homeActionState = hasOpen
             ? 'check_out'
             : (hasNotCheckedIn || rows.isEmpty)
-                ? 'check_in'
-                : hasCompleted
-                    ? 'done'
-                    : 'check_in';
+            ? 'check_in'
+            : hasCompleted
+            ? 'done'
+            : 'check_in';
 
         _checkInStatus = {
           'has_open': hasOpen,
@@ -335,14 +334,20 @@ class DoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> hasOutstandingDo({
+  Future<void> refreshHasOutstandingDo({
     required String token,
     required String userId,
   }) async {
     try {
-      return await _repository.hasOutstandingDo(token: token, userId: userId);
-    } catch (_) {
-      return true;
+      final confirmed = await fetchConfirmedDoForUser(
+        token: token,
+        userId: userId,
+      );
+      _hasOutstandingDo = confirmed.isNotEmpty;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
     }
   }
 
@@ -399,7 +404,7 @@ class DoProvider extends ChangeNotifier {
   Future<void> checkIn({
     required String token,
     required List<String> doIds,
-    required String deliveryPlanId,
+    String? deliveryPlanId,
     required String userId,
     required String timeIn,
     required String latIn,
@@ -414,7 +419,7 @@ class DoProvider extends ChangeNotifier {
     try {
       final dpRealisasiId = await _repository.checkIn(
         token: token,
-        deliveryPlanId: deliveryPlanId,
+        deliveryPlanId: deliveryPlanId ?? '',
         userId: userId,
         timeIn: timeIn,
         latIn: latIn,
@@ -585,7 +590,11 @@ class DoProvider extends ChangeNotifier {
     // - failed  => 6
     final newStatus = isFailed ? 6 : 3;
     for (final doId in doIds) {
-      await _repository.updateDoStatus(token: token, doId: doId, status: newStatus);
+      await _repository.updateDoStatus(
+        token: token,
+        doId: doId,
+        status: newStatus,
+      );
     }
   }
 

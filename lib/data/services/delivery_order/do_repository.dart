@@ -83,7 +83,9 @@ class DoRepository {
     if (response.statusCode != 200) return null;
 
     final body = json.decode(response.body);
-    final data = (body is Map<String, dynamic>) ? (body['data'] as List?) : null;
+    final data = (body is Map<String, dynamic>)
+        ? (body['data'] as List?)
+        : null;
     if (data == null) return null;
 
     for (final item in data) {
@@ -125,7 +127,9 @@ class DoRepository {
     }
 
     final body = json.decode(response.body);
-    final data = (body is Map<String, dynamic>) ? (body['data'] as List?) : null;
+    final data = (body is Map<String, dynamic>)
+        ? (body['data'] as List?)
+        : null;
     return data ?? [];
   }
 
@@ -155,8 +159,9 @@ class DoRepository {
 
       if (response.statusCode != 200) continue;
       final body = json.decode(response.body);
-      final data =
-          (body is Map<String, dynamic>) ? (body['data'] as List?) : null;
+      final data = (body is Map<String, dynamic>)
+          ? (body['data'] as List?)
+          : null;
       if ((data ?? []).isNotEmpty) return true;
     }
     return false;
@@ -188,8 +193,9 @@ class DoRepository {
 
       if (response.statusCode != 200) continue;
       final body = json.decode(response.body);
-      final data =
-          (body is Map<String, dynamic>) ? (body['data'] as List?) : null;
+      final data = (body is Map<String, dynamic>)
+          ? (body['data'] as List?)
+          : null;
       if ((data ?? []).isNotEmpty) return true;
     }
     return false;
@@ -197,7 +203,7 @@ class DoRepository {
 
   Future<String> upsertDeliveryPlanRealisasiCheckIn({
     required String token,
-    required String deliveryPlanId,
+    String? deliveryPlanId,
     required String userId,
     required String timeIn,
     required String latIn,
@@ -211,7 +217,7 @@ class DoRepository {
     final existingId = await _getTodayDeliveryPlanRealisasiId(
       token: token,
       userId: userId,
-      deliveryPlanId: deliveryPlanId,
+      deliveryPlanId: deliveryPlanId ?? '',
       dateOnly: today,
     );
 
@@ -224,7 +230,7 @@ class DoRepository {
     if (kDebugMode) {
       debugPrint('[DP_REALISASI] $method $uri');
       debugPrint(
-        '[DP_REALISASI] payload: delivery_plan_id=$deliveryPlanId user_id=$userId date=$today time_in=$timeIn lat_in=$latIn long_in=$longIn',
+        '[DP_REALISASI] payload: delivery_plan_id=${deliveryPlanId ?? 'null'} user_id=$userId date=$today time_in=$timeIn lat_in=$latIn long_in=$longIn',
       );
       debugPrint('[DP_REALISASI] address_in=$addressIn');
       debugPrint('[DP_REALISASI] foto_in=${photo.path}');
@@ -232,7 +238,9 @@ class DoRepository {
     final request = http.MultipartRequest(method, uri);
     request.headers['Authorization'] = 'Bearer $token';
 
-    request.fields['delivery_plan_id'] = deliveryPlanId;
+    if (deliveryPlanId != null && deliveryPlanId.isNotEmpty) {
+      request.fields['delivery_plan_id'] = deliveryPlanId;
+    }
     request.fields['user_id'] = userId;
     request.fields['date'] = today;
     request.fields['time_in'] = timeIn;
@@ -265,7 +273,7 @@ class DoRepository {
     final fetchedId = await _getTodayDeliveryPlanRealisasiId(
       token: token,
       userId: userId,
-      deliveryPlanId: deliveryPlanId,
+      deliveryPlanId: deliveryPlanId ?? '',
       dateOnly: today,
     );
     if (kDebugMode) {
@@ -321,6 +329,7 @@ class DoRepository {
       );
     }
   }
+
   Future<List<DeliveryOrderModel>> getListDOMasuk({
     required String token,
     String? search,
@@ -398,9 +407,9 @@ class DoRepository {
           queryParams['search'] = search;
           queryParams['searchfield'] = 'code,nopol';
         }
-        final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
-          queryParameters: queryParams,
-        );
+        final uri = Uri.parse(
+          '$baseUrl/dynamic/t_surat_jalan',
+        ).replace(queryParameters: queryParams);
         final response = await http.get(
           uri,
           headers: {
@@ -525,7 +534,9 @@ class DoRepository {
     // - Jika tidak ada status 5 -> tampilkan semua status 3 (hari ini)
     final status5 = await fetch('5');
     if (kDebugMode) {
-      debugPrint('[COMPLAINT_DO] picked_status=${status5.isNotEmpty ? "5" : "3"}');
+      debugPrint(
+        '[COMPLAINT_DO] picked_status=${status5.isNotEmpty ? "5" : "3"}',
+      );
       debugPrint('[COMPLAINT_DO] count_status5=${status5.length}');
     }
     if (status5.isNotEmpty) return status5;
@@ -649,7 +660,9 @@ class DoRepository {
   Future<Map<String, dynamic>> checkOpenTimeInSuratJalan({
     required String token,
   }) async {
-    final uri = Uri.parse('$baseUrl/fn/t_surat_jalan_realisasi/checkOpenTimeIn');
+    final uri = Uri.parse(
+      '$baseUrl/fn/t_surat_jalan_realisasi/checkOpenTimeIn',
+    );
     if (kDebugMode) {
       debugPrint('[SJ_REALISASI] GET $uri');
     }
@@ -715,12 +728,18 @@ class DoRepository {
     required File photo,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl/dynamic/t_delivery_plan_realisasi/$realisasiId');
+      final uri = Uri.parse(
+        '$baseUrl/dynamic/t_delivery_plan_realisasi/$realisasiId',
+      );
       var request = http.MultipartRequest('PUT', uri);
       if (kDebugMode) {
         debugPrint('[DP_REALISASI] PUT $uri');
-        debugPrint('[DP_REALISASI] realisasi_id=$realisasiId delivery_plan_id=$deliveryPlanId user_id=$userId');
-        debugPrint('[DP_REALISASI] time_out=$timeOut lat_out=$latOut long_out=$longOut durasi=$duration');
+        debugPrint(
+          '[DP_REALISASI] realisasi_id=$realisasiId delivery_plan_id=$deliveryPlanId user_id=$userId',
+        );
+        debugPrint(
+          '[DP_REALISASI] time_out=$timeOut lat_out=$latOut long_out=$longOut durasi=$duration',
+        );
         debugPrint('[DP_REALISASI] address_out=$addressOut');
         debugPrint('[DP_REALISASI] foto_out=${photo.path}');
       }
@@ -769,7 +788,9 @@ class DoRepository {
     String? note,
     required File photo,
   }) async {
-    final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan_realisasi/$realisasiId');
+    final uri = Uri.parse(
+      '$baseUrl/dynamic/t_surat_jalan_realisasi/$realisasiId',
+    );
     if (kDebugMode) {
       debugPrint('[SJ_REALISASI] PUT $uri');
       debugPrint(
@@ -792,7 +813,9 @@ class DoRepository {
       request.fields['note'] = note.trim();
     }
 
-    request.files.add(await http.MultipartFile.fromPath('foto_out', photo.path));
+    request.files.add(
+      await http.MultipartFile.fromPath('foto_out', photo.path),
+    );
 
     final response = await request.send();
     final responseBody = await response.stream.bytesToString();
@@ -812,7 +835,10 @@ class DoRepository {
     required String userId,
     required String deliveryPlanId,
   }) async {
-    final rows = await fetchTodayDeliveryPlanRealisasi(token: token, userId: userId);
+    final rows = await fetchTodayDeliveryPlanRealisasi(
+      token: token,
+      userId: userId,
+    );
     for (final r in rows) {
       if (r is! Map) continue;
       if (r['delivery_plan_id']?.toString() != deliveryPlanId) continue;
@@ -847,8 +873,9 @@ class DoRepository {
       );
       if (response.statusCode != 200) continue;
       final body = json.decode(response.body);
-      final data =
-          (body is Map<String, dynamic>) ? (body['data'] as List?) : null;
+      final data = (body is Map<String, dynamic>)
+          ? (body['data'] as List?)
+          : null;
       if ((data ?? []).isNotEmpty) return true;
     }
     return false;
@@ -879,7 +906,9 @@ class DoRepository {
     );
     if (response.statusCode != 200) return false;
     final body = json.decode(response.body);
-    final data = (body is Map<String, dynamic>) ? (body['data'] as List?) : null;
+    final data = (body is Map<String, dynamic>)
+        ? (body['data'] as List?)
+        : null;
     return (data ?? []).isNotEmpty;
   }
 
