@@ -5,6 +5,7 @@ import 'package:bbs_driver/data/services/delivery_order/do_repository.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:bbs_driver/features/home/presentation/pages/home_page.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -80,7 +81,6 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
     _updateCurrentDateTime();
     await _requestAndSetLocation();
 
-    final doProvider = context.read<DoProvider>();
     final authProvider = context.read<AuthProvider>();
     final token = authProvider.token;
 
@@ -90,28 +90,49 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
     }
 
     try {
-      final openRealisasi = await doProvider.getOpenSjRealisasi(
-        token: token,
-        doIds: widget.doIds,
-      );
+      // 1. Ambil detail dari DO pertama untuk menentukan status awal
+      if (widget.doIds.isEmpty) {
+        _setPageError('Tidak ada ID Surat Jalan yang diberikan.');
+        return;
+      }
+      final firstDoId = widget.doIds.first;
+      final doDetail = await _doRepo.getDetailDo(token: token, doId: firstDoId);
 
       if (!mounted) return;
 
-      if (openRealisasi != null) {
-        // An open check-in exists, switch to Check-Out mode
-        setState(() {
-          _sjRealisasi = openRealisasi;
-          _pageState = PageState.checkOut;
-          _latitude = openRealisasi.latIn;
-          _longitude = openRealisasi.longIn;
-          _address = openRealisasi.addressIn ?? 'Alamat tidak tercatat';
-        });
-        _calculateDuration(openRealisasi.timeIn);
-      } else {
-        // No open check-in, switch to Check-In mode
+      // 2. Tentukan state halaman berdasarkan status DO
+      if (doDetail.status == 5) {
+        // Status 5: Sudah Check-in, masuk mode Check-out.
+        // Ambil data realisasi dari `t_surat_jalan_realisasis` yang di-include di getDetailDo
+        final realisasiData = doDetail.rawRealisasi?.firstWhereOrNull(
+          (realis) => realis['time_out'] == null,
+        );
+
+        if (realisasiData != null) {
+          final openRealisasi = SjRealisasiModel.fromJson(realisasiData);
+          setState(() {
+            _sjRealisasi = openRealisasi;
+            _pageState = PageState.checkOut;
+            _latitude = openRealisasi.latIn;
+            _longitude = openRealisasi.longIn;
+            _address = openRealisasi.addressIn ?? 'Alamat tidak tercatat';
+          });
+          _calculateDuration(openRealisasi.timeIn);
+        } else {
+          _setPageError(
+            'Status DO adalah 5 (check-out) tapi data realisasi open tidak ditemukan di dalam DO.',
+          );
+        }
+      } else if (doDetail.status == 4) {
+        // Status 4: Belum Check-in, masuk mode Check-in
         setState(() {
           _pageState = PageState.checkIn;
         });
+      } else {
+        // Status lain yang tidak terduga
+        _setPageError(
+          'Status DO tidak valid untuk check-in/check-out (Status: ${doDetail.status}).',
+        );
       }
     } catch (e) {
       _setPageError('Gagal memuat data kunjungan: ${e.toString()}');
@@ -387,6 +408,9 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
 
       final now = DateTime.now().toUtc().toIso8601String();
 
+      // Ambil dpRealisasiId yang aktif dari provider
+      final dpRealisasiId = doProvider.getDpRealisasi()?.id;
+
       // Start SJ Realisasi (Check-In) - kolektif untuk semua DO dalam group
       // Catatan: startCustomerCheckin di DoProvider saat ini memulai SJ per-DO,
       // dan akan membentuk t_surat_jalan_realisasi untuk masing-masing DO.
@@ -400,6 +424,7 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
           longIn: _longitude,
           addressIn: _address,
           photo: _image!,
+          dpRealisasiId: dpRealisasiId, // Kirim ID-nya
         );
       }
 

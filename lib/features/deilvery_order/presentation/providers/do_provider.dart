@@ -47,10 +47,18 @@ class DoProvider extends ChangeNotifier {
   DpRealisasiModel? getDpRealisasi() => _repository.getDpRealisasi();
 
   String get homeActionState => _homeActionState;
+
+  // Tombol Check In hanya aktif saat state home masih 'check_in'
+  // dan tidak ada DP realisasi yang sedang open untuk hari ini.
   bool get homeCheckInEnabled =>
-      _homeActionState == 'check_in' && _hasOutstandingDo;
+      _homeActionState == 'check_in' && _checkInStatus['has_open'] == false;
+
+  // Tombol Check Out aktif saat ada realisasi DP open (time_out masih null)
+  // dan user tidak punya DO yang masih outstanding.
   bool get homeCheckOutEnabled =>
-      _homeActionState == 'check_out' && !_hasOutstandingDo;
+      _homeActionState == 'check_out' &&
+      (_checkInStatus['has_open'] == true) &&
+      !_hasOutstandingDo;
   bool get homeDone => _homeActionState == 'done';
 
   List<DeliveryOrderModel> get doList => _doList;
@@ -310,6 +318,14 @@ class DoProvider extends ChangeNotifier {
           userId: userId,
         );
 
+        // --- LOGGING ---
+        print('--- Check Open Time In ---');
+        print(
+          'URL: (implied) /t_delivery_plan_realisasi?user_id=$userId&date=TODAY',
+        );
+        print('Response: $rows');
+        // --- END LOGGING ---
+
         bool hasOpen = false;
         bool hasCompleted = false;
         bool hasNotCheckedIn = false;
@@ -330,13 +346,7 @@ class DoProvider extends ChangeNotifier {
           }
         }
 
-        _homeActionState = hasOpen
-            ? 'check_out'
-            : (hasNotCheckedIn || rows.isEmpty)
-            ? 'check_in'
-            : hasCompleted
-            ? 'done'
-            : 'check_in';
+        _homeActionState = hasOpen ? 'check_out' : 'check_in';
 
         // Jika state adalah 'check_out' tapi cache lokal kosong (misal: setelah app restart),
         // pulihkan state dari data yang di-fetch.
@@ -715,6 +725,7 @@ class DoProvider extends ChangeNotifier {
     required String longIn,
     required String addressIn,
     required File photo,
+    String? dpRealisasiId, // Tambahkan parameter ini
   }) async {
     try {
       // 1. Mulai SJ Realisasi (check-in di lokasi)
@@ -727,6 +738,7 @@ class DoProvider extends ChangeNotifier {
         longIn: longIn,
         addressIn: addressIn,
         photo: photo,
+        dpRealisasiId: dpRealisasiId, // Teruskan ke repository
       );
 
       // 2. Update status DO menjadi 'dalam pengiriman' (status 5)

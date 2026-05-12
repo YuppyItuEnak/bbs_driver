@@ -18,6 +18,7 @@ class DeliveryOrderModel {
   final String? notes;
   final List<DeliveryOrderDetail> details;
   final SalesOrderModel? salesOrder;
+  final List<Map<String, dynamic>>? rawRealisasi;
 
   // hasil include=t_surat_jalan_realisasi (untuk cek mode check-in/out)
   final List<TSJRealisasiLightModel>? tSuratJalanRealisasi;
@@ -40,9 +41,15 @@ class DeliveryOrderModel {
     required this.details,
     this.salesOrder,
     this.tSuratJalanRealisasi,
+    this.rawRealisasi,
   });
 
   factory DeliveryOrderModel.fromJson(Map<String, dynamic> json) {
+    var realisasiList = json['t_surat_jalan_realisasis'] as List?;
+    var realisasiLight = (realisasiList ?? [])
+        .map((e) => TSJRealisasiLightModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+
     return DeliveryOrderModel(
       id: json['id'],
       deliveryPlanId: json['delivery_plan_id'],
@@ -52,7 +59,7 @@ class DeliveryOrderModel {
       status: (json['status'] as num?)?.toInt() ?? 0,
       siUsed: json['si_used'] ?? false,
       isTaken: json['is_taken'] ?? false,
-      customer: json['m_customer']['name'],
+      customer: json['m_customer']?['name'],
       shipTo: json['ship_to'],
       deliveryArea: json['delivery_area'],
       vehicle: json['vehicle'],
@@ -61,18 +68,14 @@ class DeliveryOrderModel {
       details: (json['t_surat_jalan_ds'] as List? ?? [])
           .map((e) => DeliveryOrderDetail.fromJson(e))
           .toList(),
-
       salesOrder: json['t_sales_order'] != null
           ? SalesOrderModel.fromJson(json['t_sales_order'])
           : null,
-
-      tSuratJalanRealisasi: (json['t_surat_jalan_realisasi'] as List? ?? [])
-          .map((e) => TSJRealisasiLightModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      tSuratJalanRealisasi: realisasiLight,
+      rawRealisasi: realisasiList?.cast<Map<String, dynamic>>(),
     );
   }
 }
-
 
 class SalesOrderModel {
   final String id;

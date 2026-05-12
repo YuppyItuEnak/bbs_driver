@@ -225,11 +225,11 @@ class _DpCheckoutPageState extends State<DpCheckoutPage> {
         photo: _image!,
       );
 
-      await doProvider.updateDeliveryPlanStatusFromDoResult(
-        token: token,
-        userId: userId,
-        deliveryPlanId: widget.deliveryPlanId,
-      );
+      // await doProvider.updateDeliveryPlanStatusFromDoResult(
+      //   token: token,
+      //   userId: userId,
+      //   deliveryPlanId: widget.deliveryPlanId,
+      // );
 
       await doProvider.checkOpenTimeIn(token: token, userId: userId);
       await doProvider.refreshHasConfirmedDo(token: token, userId: userId);

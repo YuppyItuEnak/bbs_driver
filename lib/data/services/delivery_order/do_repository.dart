@@ -30,12 +30,14 @@ class DoRepository {
   Future<SjRealisasiModel?> getOpenSjRealisasi({
     required String token,
     required List<String> doIds,
+    // required String dpRealisasiId,
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan_realisasi').replace(
         queryParameters: {
           'filter_in_t_surat_jalan_id': doIds.join(','),
           'filter_is_null_time_out': 'true',
+          // 'filter_column_dp_realisasi': dpRealisasiId,
           'limit': '1',
         },
       );
@@ -73,6 +75,7 @@ class DoRepository {
     required String longIn,
     required String addressIn,
     required File photo,
+    String? dpRealisasiId,
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan_realisasi');
@@ -83,14 +86,19 @@ class DoRepository {
         ..fields['time_in'] = timeIn
         ..fields['lat_in'] = latIn
         ..fields['long_in'] = longIn
-        ..fields['address_in'] = addressIn
-        ..files.add(
-          await http.MultipartFile.fromPath(
-            'foto_in',
-            photo.path,
-            filename: basename(photo.path),
-          ),
-        );
+        ..fields['address_in'] = addressIn;
+
+      if (dpRealisasiId != null) {
+        request.fields['dp_realisasi'] = dpRealisasiId;
+      }
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'foto_in',
+          photo.path,
+          filename: basename(photo.path),
+        ),
+      );
 
       final response = await request.send();
       final responseBody = await response.stream.bytesToString();
@@ -207,9 +215,11 @@ class DoRepository {
       queryParameters: {
         'where': 'date=$today',
         'filter_column_user_id': userId,
+        'filter_column_time_out': 'null',
         'paginate': '200',
       },
     );
+    print("check dp realisasi hari ini: ${uri.toString()}");
 
     final response = await http.get(
       uri,
