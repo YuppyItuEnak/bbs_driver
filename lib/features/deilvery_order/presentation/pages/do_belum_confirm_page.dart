@@ -40,8 +40,9 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
         _scrollController.position.maxScrollExtent) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
-      if (token != null) {
-        context.read<DoProvider>().fetchDoMasuk(token: token);
+      final userId = authProvider.user?.id;
+      if (token != null && userId != null) {
+        context.read<DoProvider>().fetchDoMasuk(token: token, userId: userId);
       }
     }
   }
@@ -49,9 +50,14 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
   Future<void> _fetchData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
+    final userId = authProvider.user?.id;
 
-    if (token != null && mounted) {
-      context.read<DoProvider>().fetchDoMasuk(token: token, isRefresh: true);
+    if (token != null && userId != null && mounted) {
+      context.read<DoProvider>().fetchDoMasuk(
+        token: token,
+        userId: userId,
+        isRefresh: true,
+      );
     }
   }
 
@@ -250,14 +256,17 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
                               doIds: allDoInDp,
                               userId: userId,
                             );
-                            Navigator.pop(context); // pop the confirmation dialog
+                            Navigator.pop(
+                              context,
+                            ); // pop the confirmation dialog
                             _showSuccessDialog(context);
                           } catch (e) {
                             Navigator.pop(context);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content:
-                                    Text("Failed to confirm DOs: ${e.toString()}"),
+                                content: Text(
+                                  "Failed to confirm DOs: ${e.toString()}",
+                                ),
                               ),
                             );
                           }
@@ -462,10 +471,9 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
                   final next = !isSelected;
                   final dpId = item.deliveryPlanId;
                   if (dpId != null && dpId.isNotEmpty) {
-                    final sameDp = context
-                        .read<DoProvider>()
-                        .doList
-                        .where((d) => d.deliveryPlanId == dpId);
+                    final sameDp = context.read<DoProvider>().doList.where(
+                      (d) => d.deliveryPlanId == dpId,
+                    );
                     for (final d in sameDp) {
                       _selectedMap[d.id] = next;
                     }

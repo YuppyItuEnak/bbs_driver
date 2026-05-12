@@ -41,6 +41,7 @@ class MyApp extends StatelessWidget {
         title: 'MBG QL App',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(primarySwatch: Colors.blue),
+        navigatorObservers: [routeObserver],
         home: const _RootPage(),
       ),
     );

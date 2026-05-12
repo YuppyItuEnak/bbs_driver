@@ -15,6 +15,12 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../widgets/home_bottom_nav.dart';
 import '../widgets/home_header.dart';
 
+// Tambahkan RouteObserverProvider di main.dart
+// final routeObserver = RouteObserver<ModalRoute<void>>();
+// MaterialApp( navigatorObservers: [routeObserver], ... )
+
+final routeObserver = RouteObserver<ModalRoute<void>>();
+
 class HomePage extends StatefulWidget {
   final bool startAsCheckedIn;
   const HomePage({super.key, this.startAsCheckedIn = false});
@@ -23,37 +29,63 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with RouteAware {
   int _selectedIndex = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Dipanggil saat pengguna kembali ke halaman ini
+    print("Kembali ke Home, me-refresh state...");
+    _refreshHomeState();
+  }
 
   @override
   void initState() {
     super.initState();
-    final token = context.read<AuthProvider>().token;
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<AuthProvider>(
-        context,
-        listen: false,
-      ).fetchUserDetails().then((_) {
-        final auth = Provider.of<AuthProvider>(context, listen: false);
-        final doProvider = Provider.of<DoProvider>(context, listen: false);
-        if (auth.token != null && auth.user?.id != null) {
-          doProvider.checkOpenTimeIn(token: auth.token!, userId: auth.user!.id);
-          doProvider.refreshHasConfirmedDo(
-            token: auth.token!,
-            userId: auth.user!.id,
-          );
-          doProvider.refreshDoMasukTotal(token: auth.token!);
-        }
-      });
-      if (token != null) {
-        Provider.of<DoProvider>(
-          context,
-          listen: false,
-        ).fetchDoMasuk(token: token);
-      }
+      _refreshHomeState();
     });
+  }
+
+  Future<void> _refreshHomeState() async {
+    final auth = context.read<AuthProvider>();
+    await auth.fetchUserDetails();
+    final token = auth.token;
+    final userId = auth.user?.id;
+
+    if (token != null && userId != null && context.mounted) {
+      final doProvider = context.read<DoProvider>();
+      await doProvider.checkOpenTimeIn(token: token, userId: userId);
+      await doProvider.refreshHasOutstandingDo(token: token, userId: userId);
+      await doProvider.refreshDoMasukTotal(token: token);
+      await doProvider.fetchDoMasuk(token: token, userId: userId);
+
+      // === LOG DIAGNOSTIK ===
+      print("--- Home State Refresh ---");
+      final dpRealisasi = doProvider.getDpRealisasi();
+      print(
+        "1. DP Realisasi Tersimpan? ${dpRealisasi != null ? 'YA (ID: ${dpRealisasi.id})' : 'TIDAK'}",
+      );
+      print("2. Home Action State: '${doProvider.homeActionState}'");
+      print("3. Ada DO Outstanding? ${doProvider.hasOutstandingDo}");
+      print("---");
+      print("Tombol Check-In Aktif? ${doProvider.homeCheckInEnabled}");
+      print("Tombol Check-Out Aktif? ${doProvider.homeCheckOutEnabled}");
+      print("--------------------------");
+      // ========================
+    }
   }
 
   void _onItemTapped(int index) {
@@ -117,22 +149,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildHomeContent(AuthProvider auth) {
     return RefreshIndicator(
-      onRefresh: () async {
-        await auth.fetchUserDetails();
-        final token = auth.token;
-        final userId = auth.user?.id;
-        if (token != null && userId != null && context.mounted) {
-          await context.read<DoProvider>().checkOpenTimeIn(
-            token: token,
-            userId: userId,
-          );
-          await context.read<DoProvider>().refreshHasConfirmedDo(
-            token: token,
-            userId: userId,
-          );
-          await context.read<DoProvider>().refreshDoMasukTotal(token: token);
-        }
-      },
+      onRefresh: _refreshHomeState,
       child: SingleChildScrollView(
         child: Column(
           children: [
@@ -227,10 +244,16 @@ class _HomePageState extends State<HomePage> {
                                           final realisasiId = (open is Map)
                                               ? open['id']?.toString()
                                               : null;
+
+                                          // delivery_plan_id bisa tidak ada di payload open.
+                                          final cachedDpId = doProvider
+                                              .getDpRealisasi()
+                                              ?.id;
                                           final deliveryPlanId = (open is Map)
-                                              ? open['delivery_plan_id']
-                                                    ?.toString()
-                                              : null;
+                                              ? (open['delivery_plan_id']
+                                                        ?.toString() ??
+                                                    cachedDpId)
+                                              : cachedDpId;
 
                                           if (realisasiId == null ||
                                               realisasiId.isEmpty ||

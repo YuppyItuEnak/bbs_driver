@@ -3,12 +3,111 @@ import 'dart:io';
 
 import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
+import 'package:bbs_driver/data/models/delivery_order/delivery_plan_realisasi_model.dart';
+import 'package:bbs_driver/data/models/delivery_order/surat_jalan_realisasi_model.dart';
 import 'package:bbs_driver/data/models/delivery_order/tracking_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
 
 class DoRepository {
   final String baseUrl = ApiConstants.baseUrl;
+
+  DpRealisasiModel? _cachedDpRealisasi;
+  DpRealisasiModel? getDpRealisasi() => _cachedDpRealisasi;
+
+  void setCachedDpRealisasi(DpRealisasiModel model) {
+    _cachedDpRealisasi = model;
+    print("[CACHE] DP Realisasi state recovered and cached. ID: ${model.id}");
+  }
+
+  void resetDpRealisasi() {
+    _cachedDpRealisasi = null;
+    print("[CACHE] DP Realisasi cache has been reset.");
+  }
+
+  // Mendapatkan SJ Realisasi yang masih open (time_out is null)
+  Future<SjRealisasiModel?> getOpenSjRealisasi({
+    required String token,
+    required List<String> doIds,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan_realisasi').replace(
+        queryParameters: {
+          'filter_in_t_surat_jalan_id': doIds.join(','),
+          'filter_is_null_time_out': 'true',
+          'limit': '1',
+        },
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (response.statusCode == 200) {
+        final parsed = json.decode(response.body);
+        final List<dynamic> data = parsed['data'];
+        if (data.isNotEmpty) {
+          return SjRealisasiModel.fromJson(data.first);
+        }
+        return null; // Tidak ada realisasi yang open
+      } else {
+        throw Exception(
+          'Failed to get open SJ realisasi: ${response.statusCode} ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('[SJ_REALISASI] Get Open Error: ${e.toString()}');
+      rethrow;
+    }
+  }
+
+  // Memulai SJ Realisasi (Check-in di lokasi customer)
+  Future<SjRealisasiModel> startSjRealisasi({
+    required String token,
+    required String doId, // Hanya satu DO ID saat memulai
+    required String userId,
+    required String timeIn,
+    required String latIn,
+    required String longIn,
+    required String addressIn,
+    required File photo,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan_realisasi');
+      var request = http.MultipartRequest('POST', uri)
+        ..headers['Authorization'] = 'Bearer $token'
+        ..fields['t_surat_jalan_id'] = doId
+        ..fields['user_id'] = userId
+        ..fields['time_in'] = timeIn
+        ..fields['lat_in'] = latIn
+        ..fields['long_in'] = longIn
+        ..fields['address_in'] = addressIn
+        ..files.add(
+          await http.MultipartFile.fromPath(
+            'foto_in',
+            photo.path,
+            filename: basename(photo.path),
+          ),
+        );
+
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final parsed = json.decode(responseBody);
+        return SjRealisasiModel.fromJson(parsed['data']);
+      } else {
+        throw Exception(
+          'Failed to start SJ realisasi: ${response.statusCode} $responseBody',
+        );
+      }
+    } catch (e) {
+      print('[SJ_REALISASI] Start Error: ${e.toString()}');
+      rethrow;
+    }
+  }
 
   String _dateOnly(DateTime dt) => dt.toIso8601String().split('T').first;
 
@@ -263,6 +362,18 @@ class DoRepository {
     }
 
     final parsed = json.decode(responseBody);
+    if (parsed['data'] != null) {
+      _cachedDpRealisasi = DpRealisasiModel.fromJson(parsed['data']);
+      final createdId = _cachedDpRealisasi?.id;
+      if (createdId != null && createdId.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint('[DP_REALISASI] extracted id from cache: $createdId');
+        }
+        return createdId;
+      }
+    }
+
+    // Fallback to original extraction method if cache or its ID is null
     final createdId = _tryExtractId(parsed);
     if (kDebugMode) {
       debugPrint('[DP_REALISASI] extracted id: ${createdId ?? "-"}');
@@ -282,6 +393,60 @@ class DoRepository {
     if (fetchedId != null && fetchedId.isNotEmpty) return fetchedId;
 
     throw Exception('dp_realisasi tidak ditemukan setelah check-in.');
+  }
+
+  Future<void> updateDeliveryPlanRealisasiCheckOut({
+    required String token,
+    required String dpRealisasiId,
+    required String timeOut,
+    required String latOut,
+    required String longOut,
+    required String duration,
+    required String addressOut,
+    required File photo,
+  }) async {
+    final uri = Uri.parse(
+      '$baseUrl/dynamic/t_delivery_plan_realisasi/$dpRealisasiId',
+    );
+    if (kDebugMode) {
+      final payload = {
+        'dp_realisasi_id': dpRealisasiId,
+        'time_out': timeOut,
+        'lat_out': latOut,
+        'long_out': longOut,
+        'durasi': duration,
+        'address_out': addressOut,
+        'foto_out': photo.path,
+      };
+      debugPrint('[DP_REALISASI] CHECK-OUT');
+      debugPrint('[DP_REALISASI] PUT $uri');
+      debugPrint('[DP_REALISASI] DATA SENT: ${jsonEncode(payload)}');
+    }
+    final request = http.MultipartRequest('PUT', uri);
+    request.headers['Authorization'] = 'Bearer $token';
+
+    request.fields['time_out'] = timeOut;
+    request.fields['lat_out'] = latOut;
+    request.fields['long_out'] = longOut;
+    request.fields['durasi'] = duration;
+    request.fields['address_out'] = addressOut;
+
+    request.files.add(
+      await http.MultipartFile.fromPath('foto_out', photo.path),
+    );
+
+    final response = await request.send();
+    final responseBody = await response.stream.bytesToString();
+    if (kDebugMode) {
+      debugPrint('[DP_REALISASI] response: ${response.statusCode}');
+      debugPrint('[DP_REALISASI] body: $responseBody');
+    }
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to check out delivery plan: ${response.statusCode} - $responseBody',
+      );
+    }
+    resetDpRealisasi();
   }
 
   Future<void> checkInSuratJalanRealisasi({
@@ -332,6 +497,7 @@ class DoRepository {
 
   Future<List<DeliveryOrderModel>> getListDOMasuk({
     required String token,
+    required String userId,
     String? search,
     int page = 1,
     int paginate = 10,
@@ -341,6 +507,7 @@ class DoRepository {
         'filter_column_status': '2', // posted
         'filter_column_si_used': 'false',
         'filter_column_is_taken': 'false',
+        'filter_column_driver_id': userId,
         'order_by': 'delivery_plan_id',
         'page': page.toString(),
         'paginate': paginate.toString(),
@@ -401,7 +568,9 @@ class DoRepository {
           'filter_column_taken_by': userId,
           'page': page.toString(),
           'paginate': paginate.toString(),
-          'include': 'm_customer',
+          // kebutuhan: cek status realisasi per DO
+          // (t_surat_jalan_realisasi berisi time_out)
+          'include': 'm_customer,t_surat_jalan_realisasi',
         };
         if (search != null && search.isNotEmpty) {
           queryParams['search'] = search;
@@ -555,7 +724,7 @@ class DoRepository {
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan/$doId').replace(
         queryParameters: {
           'include':
-              't_surat_jalan_d,t_sales_order,t_surat_jalan_d>m_item,m_customer',
+              't_surat_jalan_d,t_sales_order,t_surat_jalan_d>m_item,m_customer,t_surat_jalan_realisasi',
         },
       );
 

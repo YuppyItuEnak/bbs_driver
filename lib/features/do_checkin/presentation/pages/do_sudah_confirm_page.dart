@@ -17,6 +17,7 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
   @override
   void initState() {
     super.initState();
+    print("Navigasi ke halaman DO Sudah Dikonfirmasi");
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final doProvider = context.read<DoProvider>();
@@ -26,11 +27,24 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
       final userID = authProvider.user?.id;
       final userId = userID.toString();
 
-      doProvider.fetchListDOSudahConfirm(
+      await doProvider.fetchListDOSudahConfirm(
         token: token,
         userId: userId,
         isRefresh: true,
       );
+
+      // Log data yang sudah di-fetch
+      if (context.mounted) {
+        final fetchedData = context.read<DoProvider>().doList;
+        print(
+          "Data DO terkonfirmasi berhasil di-fetch: ${fetchedData.length} data",
+        );
+        for (var item in fetchedData) {
+          print(
+            "  - DO: ${item.code}, Customer: ${item.customer}, Status: ${item.status}",
+          );
+        }
+      }
 
       doProvider.checkOpenTimeIn(token: token, userId: userId);
       doProvider.refreshHasConfirmedDo(token: token, userId: userId);
@@ -200,27 +214,15 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
         }
 
         final doProvider = context.read<DoProvider>();
-        final checkInStatus = doProvider.checkInStatus;
         final deliveryPlanId = group.items.first.deliveryPlanId;
 
-        bool shouldGoToCheckout = false;
-        if (checkInStatus['has_open'] == true && deliveryPlanId != null) {
-          final data = (checkInStatus['data'] as List?)?.cast<dynamic>() ?? [];
-          final open = data.cast<dynamic>().firstWhere(
-                (e) =>
-                    e['delivery_plan_id'] == deliveryPlanId &&
-                    e['time_out'] == null,
-                orElse: () => null,
-              );
-          if (open != null) {
-            shouldGoToCheckout = true;
-          }
-        }
+        // Aturan baru: Cukup periksa apakah ada DP Realisasi yang aktif secara umum.
+        final bool canVisitCustomer = doProvider.homeActionState == 'check_out';
 
         final doIds = group.items.map((e) => e.id).toList();
         final doCodes = group.items.map((e) => e.code).toList();
 
-        if (shouldGoToCheckout) {
+        if (canVisitCustomer) {
           if (deliveryPlanId == null || deliveryPlanId.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Delivery plan ID tidak ditemukan')),
@@ -234,21 +236,14 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
                 doIds: doIds,
                 doCodes: doCodes,
                 customerName: group.customerName,
-                deliveryPlanId: deliveryPlanId,
               ),
             ),
           );
         } else {
-          if (deliveryPlanId == null || deliveryPlanId.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Delivery plan ID tidak ditemukan')),
-            );
-            return;
-          }
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Belum ada DP realisasi (check-in DP) untuk delivery plan ini. Silakan Check In dari Home dulu.',
+                'Anda harus Check In perjalanan terlebih dahulu di halaman Home.',
               ),
             ),
           );

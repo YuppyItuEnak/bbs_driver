@@ -291,9 +291,11 @@ class _DetailDoCheckoutState extends State<DetailDoCheckout> {
             if (checkInStatus['has_open'] == true) {
               final data = checkInStatus['data'] as List;
               for (var item in data) {
-                if (item['delivery_plan_id'] == model?.deliveryPlanId &&
-                    item['time_out'] == null) {
-                  checkInRecordId = item['id'];
+                // Cari record realisasi SJ yang masih open (time_out == null).
+                // Jangan bergantung pada matching delivery_plan_id karena payload checkOpenTimeIn
+                // bisa tidak menyediakan field tersebut dengan format yang sama.
+                if (item is Map && item['time_out'] == null) {
+                  checkInRecordId = item['id']?.toString();
                   break;
                 }
               }
@@ -316,8 +318,6 @@ class _DetailDoCheckoutState extends State<DetailDoCheckout> {
                     doIds: [widget.doId],
                     doCodes: [model?.code ?? widget.doId],
                     customerName: model?.customer ?? '-',
-                    deliveryPlanId: deliveryPlanId,
-                    realisasiId: checkInRecordId,
                   ),
                 ),
               );

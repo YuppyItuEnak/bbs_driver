@@ -269,7 +269,6 @@ class _DetailDoPageState extends State<DetailDoPage> {
                                             customerName:
                                                 doProvider.detailDO?.customer ??
                                                 '-',
-                                            deliveryPlanId: deliveryPlanId,
                                           ),
                                     ),
                                   );

@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:bbs_driver/data/models/delivery_order/delivery_plan_realisasi_model.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_detail.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
+import 'package:bbs_driver/data/models/delivery_order/surat_jalan_realisasi_model.dart';
 import 'package:bbs_driver/data/models/delivery_order/tracking_model.dart';
 import 'package:bbs_driver/data/services/delivery_order/do_repository.dart';
 import 'package:flutter/material.dart';
@@ -41,9 +43,14 @@ class DoProvider extends ChangeNotifier {
   bool get canCheckIn => _checkInStatus['has_open'] == false;
   bool get hasConfirmedDo => _hasConfirmedDo;
   bool get hasOutstandingDo => _hasOutstandingDo;
+
+  DpRealisasiModel? getDpRealisasi() => _repository.getDpRealisasi();
+
+  String get homeActionState => _homeActionState;
   bool get homeCheckInEnabled =>
       _homeActionState == 'check_in' && _hasOutstandingDo;
-  bool get homeCheckOutEnabled => _homeActionState == 'check_out';
+  bool get homeCheckOutEnabled =>
+      _homeActionState == 'check_out' && !_hasOutstandingDo;
   bool get homeDone => _homeActionState == 'done';
 
   List<DeliveryOrderModel> get doList => _doList;
@@ -57,6 +64,7 @@ class DoProvider extends ChangeNotifier {
 
   Future<void> fetchDoMasuk({
     required String token,
+    required String userId,
     bool isRefresh = false,
     String? search,
   }) async {
@@ -77,6 +85,7 @@ class DoProvider extends ChangeNotifier {
     try {
       final newList = await _repository.getListDOMasuk(
         token: token,
+        userId: userId,
         page: _page,
         paginate: _paginate,
         search: _searchKeyword,
@@ -247,6 +256,30 @@ class DoProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // GUARD: DO yang sudah punya realisasi open (time_out == null) tidak boleh dikonfirmasi lagi.
+      // Ini mencegah kasus setelah check-in masih bisa "konfirmasi" DO.
+      final openSj = await _repository.checkOpenTimeInSuratJalan(token: token);
+      final openRows = (openSj['data'] as List?)?.cast<dynamic>() ?? [];
+
+      bool isDoAlreadyCheckedIn(String doId) {
+        for (final row in openRows) {
+          if (row is! Map) continue;
+          final sjId = row['t_surat_jalan_id']?.toString();
+          final timeOut = row['time_out'];
+          final open = timeOut == null || timeOut.toString().isEmpty;
+          if (open && sjId == doId) return true;
+        }
+        return false;
+      }
+
+      for (final doId in doIds) {
+        if (isDoAlreadyCheckedIn(doId)) {
+          throw Exception(
+            'DO ${doId} sudah check-in (realisasi open). Konfirmasi tidak bisa dilakukan lagi.',
+          );
+        }
+      }
+
       await _repository.confirmDo(token: token, doIds: doIds, userId: userId);
       // After confirm, DO status becomes 4 (confirmed).
       // Status 5 is only when the DO/customer is checked-in.
@@ -304,6 +337,24 @@ class DoProvider extends ChangeNotifier {
             : hasCompleted
             ? 'done'
             : 'check_in';
+
+        // Jika state adalah 'check_out' tapi cache lokal kosong (misal: setelah app restart),
+        // pulihkan state dari data yang di-fetch.
+        if (_homeActionState == 'check_out' &&
+            _repository.getDpRealisasi() == null) {
+          final openRealisasiData = rows.firstWhere(
+            (r) =>
+                r is Map &&
+                r['time_in'] != null &&
+                (r['time_out'] == null || r['time_out'].toString().isEmpty),
+            orElse: () => null,
+          );
+
+          if (openRealisasiData != null) {
+            final model = DpRealisasiModel.fromJson(openRealisasiData);
+            _repository.setCachedDpRealisasi(model);
+          }
+        }
 
         _checkInStatus = {
           'has_open': hasOpen,
@@ -640,6 +691,53 @@ class DoProvider extends ChangeNotifier {
       deliveryPlanId: deliveryPlanId,
       status: has6 ? 6 : 5,
     );
+  }
+
+  Future<SjRealisasiModel?> getOpenSjRealisasi({
+    required String token,
+    required List<String> doIds,
+  }) async {
+    try {
+      return await _repository.getOpenSjRealisasi(token: token, doIds: doIds);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<SjRealisasiModel> startCustomerCheckin({
+    required String token,
+    required String doId,
+    required String userId,
+    required String timeIn,
+    required String latIn,
+    required String longIn,
+    required String addressIn,
+    required File photo,
+  }) async {
+    try {
+      // 1. Mulai SJ Realisasi (check-in di lokasi)
+      final sjRealisasi = await _repository.startSjRealisasi(
+        token: token,
+        doId: doId,
+        userId: userId,
+        timeIn: timeIn,
+        latIn: latIn,
+        longIn: longIn,
+        addressIn: addressIn,
+        photo: photo,
+      );
+
+      // 2. Update status DO menjadi 'dalam pengiriman' (status 5)
+      await _repository.updateDoStatus(token: token, doId: doId, status: 5);
+
+      return sjRealisasi;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<void> updateDoStatus({

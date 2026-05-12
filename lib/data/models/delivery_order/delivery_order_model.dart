@@ -1,4 +1,5 @@
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_detail.dart';
+import 'package:bbs_driver/data/models/delivery_order/t_surat_jalan_realisasi_light_model.dart';
 
 class DeliveryOrderModel {
   final String id;
@@ -18,6 +19,9 @@ class DeliveryOrderModel {
   final List<DeliveryOrderDetail> details;
   final SalesOrderModel? salesOrder;
 
+  // hasil include=t_surat_jalan_realisasi (untuk cek mode check-in/out)
+  final List<TSJRealisasiLightModel>? tSuratJalanRealisasi;
+
   DeliveryOrderModel({
     required this.id,
     this.deliveryPlanId,
@@ -35,6 +39,7 @@ class DeliveryOrderModel {
     this.notes,
     required this.details,
     this.salesOrder,
+    this.tSuratJalanRealisasi,
   });
 
   factory DeliveryOrderModel.fromJson(Map<String, dynamic> json) {
@@ -60,9 +65,14 @@ class DeliveryOrderModel {
       salesOrder: json['t_sales_order'] != null
           ? SalesOrderModel.fromJson(json['t_sales_order'])
           : null,
+
+      tSuratJalanRealisasi: (json['t_surat_jalan_realisasi'] as List? ?? [])
+          .map((e) => TSJRealisasiLightModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
+
 
 class SalesOrderModel {
   final String id;
