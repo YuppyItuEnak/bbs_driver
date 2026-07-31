@@ -4,7 +4,6 @@
 build/
 pubspec.lock
 CLAUDE.md
-FLOW.md
 
 .flutter-plugins
 .flutter-plugins-dependencies
