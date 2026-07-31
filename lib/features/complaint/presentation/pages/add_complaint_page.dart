@@ -61,6 +61,7 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
 
     final token = auth.token;
     final userId = auth.user?.id;
+    final unitBussinessId = auth.unitBusinessId;
     if (token == null || userId == null) {
       setState(() {
         _isLoading = false;
@@ -76,7 +77,11 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
 
     try {
       final results = await Future.wait([
-        _doRepo.getTodayHistoryForComplaint(token: token, userId: userId),
+        _doRepo.getTodayHistoryForComplaint(
+          token: token,
+          userId: userId,
+          unitBussinessId: unitBussinessId,
+        ),
         _mGenRepo.fetchMGen("group=m_complain_type", token),
       ]);
 
@@ -317,30 +322,39 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ..._doOptions.map((d) {
-                      final selected = _selectedDoIds.contains(d.id);
-                      return CheckboxListTile(
-                        value: selected,
-                        onChanged: (val) {
-                          setState(() {
-                            if (val == true) {
-                              _selectedDoIds.add(d.id);
-                              _itemsByDoId.putIfAbsent(
-                                d.id,
-                                () => <ComplainCreateItemModel>[],
-                              );
-                            } else {
-                              _selectedDoIds.remove(d.id);
-                              _itemsByDoId.remove(d.id);
-                            }
-                          });
-                        },
-                        title: Text(d.code),
-                        subtitle: Text(d.customer ?? '-'),
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: EdgeInsets.zero,
-                      );
-                    }),
+                    if (_doOptions.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          'Tidak ada DO yang sedang berjalan/sedang dikunjungi',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      )
+                    else
+                      ..._doOptions.map((d) {
+                        final selected = _selectedDoIds.contains(d.id);
+                        return CheckboxListTile(
+                          value: selected,
+                          onChanged: (val) {
+                            setState(() {
+                              if (val == true) {
+                                _selectedDoIds.add(d.id);
+                                _itemsByDoId.putIfAbsent(
+                                  d.id,
+                                  () => <ComplainCreateItemModel>[],
+                                );
+                              } else {
+                                _selectedDoIds.remove(d.id);
+                                _itemsByDoId.remove(d.id);
+                              }
+                            });
+                          },
+                          title: Text(d.code),
+                          subtitle: Text(d.customer ?? '-'),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                        );
+                      }),
                     const SizedBox(height: 12),
                     const Text(
                       'Tipe',

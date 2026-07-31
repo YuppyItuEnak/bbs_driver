@@ -119,15 +119,27 @@ class DoRepository {
 
   String _dateOnly(DateTime dt) => dt.toIso8601String().split('T').first;
 
-  Future<int> getDoMasukTotal({required String token}) async {
-    // Use paginate=1 and read pagination.total so Home can show remaining DO count.
+  Future<int> getDoMasukTotal({
+    required String token,
+    String? unitBussinessId,
+    String? userId,
+  }) async {
+    // DO masuk = DO yang sudah dikonfirmasi (status 4).
+    // Gunakan paginate=1 lalu baca pagination.total untuk jumlah sisa DO.
+    final queryParams = <String, String>{
+      'filter_column_status': '4',
+      'filter_column_is_taken': 'true',
+      'page': '1',
+      'paginate': '1',
+    };
+    if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+      queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+    }
+    if (userId != null && userId.isNotEmpty) {
+      queryParams['filter_column_taken_by'] = userId;
+    }
     final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
-      queryParameters: {
-        'filter_column_status': '2',
-        'filter_column_is_taken': 'false',
-        'page': '1',
-        'paginate': '1',
-      },
+      queryParameters: queryParams,
     );
 
     final response = await http.get(
@@ -140,6 +152,50 @@ class DoRepository {
 
     if (response.statusCode != 200) {
       throw Exception('Failed get DO masuk total: ${response.statusCode}');
+    }
+
+    final body = json.decode(response.body);
+    final pagination = (body is Map<String, dynamic>)
+        ? (body['pagination'] as Map<String, dynamic>?)
+        : null;
+    final total = pagination?['total'];
+    return (total as num?)?.toInt() ?? 0;
+  }
+
+  Future<int> getDoBelumKonfirmasiTotal({
+    required String token,
+    String? unitBussinessId,
+    String? userId,
+  }) async {
+    // DO belum dikonfirmasi = status 2 (posted), belum diambil driver.
+    // Paginate=1 lalu baca pagination.total untuk total sebenarnya.
+    final queryParams = <String, String>{
+      'filter_column_status': '2',
+      'filter_column_si_used': 'false',
+      'filter_column_is_taken': 'false',
+      'page': '1',
+      'paginate': '1',
+    };
+    if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+      queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+    }
+    if (userId != null && userId.isNotEmpty) {
+      queryParams['filter_column_driver_id'] = userId;
+    }
+    final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
+      queryParameters: queryParams,
+    );
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed get DO belum konfirmasi total: ${response.statusCode}');
     }
 
     final body = json.decode(response.body);
@@ -245,17 +301,22 @@ class DoRepository {
   Future<bool> hasConfirmedDo({
     required String token,
     required String userId,
+    String? unitBussinessId,
   }) async {
     // Confirmed DO statuses: 4 (confirmed) / 5 (in progress).
     for (final status in const ['4', '5']) {
+      final queryParams = <String, String>{
+        'filter_column_status': status,
+        'filter_column_is_taken': 'true',
+        'filter_column_taken_by': userId,
+        'paginate': '1',
+        'page': '1',
+      };
+      if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+        queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+      }
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
-        queryParameters: {
-          'filter_column_status': status,
-          'filter_column_is_taken': 'true',
-          'filter_column_taken_by': userId,
-          'paginate': '1',
-          'page': '1',
-        },
+        queryParameters: queryParams,
       );
 
       final response = await http.get(
@@ -279,17 +340,22 @@ class DoRepository {
   Future<bool> hasOutstandingDo({
     required String token,
     required String userId,
+    String? unitBussinessId,
   }) async {
     // Outstanding: status 4 (confirmed) or 5 (checked-in customer, in progress).
     for (final status in const ['4', '5']) {
+      final queryParams = <String, String>{
+        'filter_column_status': status,
+        'filter_column_is_taken': 'true',
+        'filter_column_taken_by': userId,
+        'paginate': '1',
+        'page': '1',
+      };
+      if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+        queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+      }
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
-        queryParameters: {
-          'filter_column_status': status,
-          'filter_column_is_taken': 'true',
-          'filter_column_taken_by': userId,
-          'paginate': '1',
-          'page': '1',
-        },
+        queryParameters: queryParams,
       );
 
       final response = await http.get(
@@ -508,6 +574,7 @@ class DoRepository {
   Future<List<DeliveryOrderModel>> getListDOMasuk({
     required String token,
     required String userId,
+    String? unitBussinessId,
     String? search,
     int page = 1,
     int paginate = 10,
@@ -523,6 +590,9 @@ class DoRepository {
         'paginate': paginate.toString(),
         'include': 'm_customer',
       };
+      if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+        queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+      }
 
       // 🔍 search (opsional)
       if (search != null && search.isNotEmpty) {
@@ -563,6 +633,7 @@ class DoRepository {
   Future<List<DeliveryOrderModel>> getListDOSudahConfirm({
     required String token,
     required String userId,
+    String? unitBussinessId,
     String? search,
     int page = 1,
     int paginate = 10,
@@ -582,6 +653,9 @@ class DoRepository {
           // (t_surat_jalan_realisasi berisi time_out)
           'include': 'm_customer,t_surat_jalan_realisasi',
         };
+        if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+          queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+        }
         if (search != null && search.isNotEmpty) {
           queryParams['search'] = search;
           queryParams['searchfield'] = 'code,nopol';
@@ -616,6 +690,7 @@ class DoRepository {
   Future<List<DeliveryOrderModel>> getListDOSudahReceived({
     required String token,
     required String userId,
+    String? unitBussinessId,
     String? search,
     int page = 1,
     int paginate = 10,
@@ -631,6 +706,9 @@ class DoRepository {
       };
 
       // 🔍 optional search
+      if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+        queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+      }
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
         queryParams['searchfield'] = 'code,nopol';
@@ -671,20 +749,25 @@ class DoRepository {
   Future<List<DeliveryOrderModel>> getTodayHistoryForComplaint({
     required String token,
     required String userId,
+    String? unitBussinessId,
   }) async {
     final today = _dateOnly(DateTime.now());
 
     Future<List<DeliveryOrderModel>> fetch(String status) async {
+      final queryParams = <String, String>{
+        'where': 'date=$today',
+        'filter_column_status': status,
+        'filter_column_is_taken': 'true',
+        'filter_column_taken_by': userId,
+        'paginate': '200',
+        'page': '1',
+        'include': 'm_customer',
+      };
+      if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+        queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+      }
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
-        queryParameters: {
-          'where': 'date=$today',
-          'filter_column_status': status,
-          'filter_column_is_taken': 'true',
-          'filter_column_taken_by': userId,
-          'paginate': '200',
-          'page': '1',
-          'include': 'm_customer',
-        },
+        queryParameters: queryParams,
       );
       if (kDebugMode) {
         debugPrint('[COMPLAINT_DO] GET $uri');
@@ -709,21 +792,20 @@ class DoRepository {
     }
 
     // Rule:
-    // - Jika hari ini ada status 5 -> tampilkan hanya status 5
-    // - Jika tidak ada status 5 -> tampilkan semua status 3 (hari ini)
-    final status5 = await fetch('5');
-    if (kDebugMode) {
-      debugPrint(
-        '[COMPLAINT_DO] picked_status=${status5.isNotEmpty ? "5" : "3"}',
-      );
-      debugPrint('[COMPLAINT_DO] count_status5=${status5.length}');
+    // - Prioritaskan status 5 (sedang dikunjungi)
+    // - Kalau tidak ada, ambil status 3 (selesai sukses)
+    // - Kalau masih tidak ada, ambil status 4 (confirmed/belum dikunjungi)
+    // - Terakhir fallback ke status 6 (gagal)
+    for (final s in ['5', '3', '4', '6']) {
+      final result = await fetch(s);
+      if (result.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint('[COMPLAINT_DO] picked_status=$s count=${result.length}');
+        }
+        return result;
+      }
     }
-    if (status5.isNotEmpty) return status5;
-    final status3 = await fetch('3');
-    if (kDebugMode) {
-      debugPrint('[COMPLAINT_DO] count_status3=${status3.length}');
-    }
-    return status3;
+    return [];
   }
 
   Future<DeliveryOrderModel> getDetailDo({
@@ -1025,6 +1107,45 @@ class DoRepository {
       if (timeOut != null && timeOut.toString().isNotEmpty) return true;
     }
     return false;
+  }
+
+  Future<int> getDoCountByStatus({
+    required String token,
+    required String userId,
+    required String status,
+    String? unitBussinessId,
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'filter_column_status': status,
+        'filter_column_is_taken': 'true',
+        'filter_column_taken_by': userId,
+        'page': '1',
+        'paginate': '1',
+      };
+      if (unitBussinessId != null && unitBussinessId.isNotEmpty) {
+        queryParams['filter_column_unit_bussiness_id'] = unitBussinessId;
+      }
+      final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
+        queryParameters: queryParams,
+      );
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode != 200) return 0;
+      final body = json.decode(response.body);
+      final pagination = (body is Map<String, dynamic>)
+          ? (body['pagination'] as Map<String, dynamic>?)
+          : null;
+      final total = pagination?['total'];
+      return (total as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0;
+    }
   }
 
   Future<bool> hasOutstandingDoForDeliveryPlan({

@@ -79,20 +79,24 @@ class HomeHeader extends StatelessWidget {
                 const SizedBox(height: 20),
 
                 // Baris 2: Kartu Status
-                Row(
-                  children: [
-                    _buildSmallInfoCard(
-                      "0",
-                      "Diproses",
-                      Icons.calendar_today_rounded,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildSmallInfoCard(
-                      "20",
-                      "Selesai",
-                      Icons.check_box_outlined,
-                    ),
-                  ],
+                Consumer<DoProvider>(
+                  builder: (context, doProvider, _) {
+                    return Row(
+                      children: [
+                        _buildSmallInfoCard(
+                          doProvider.doDiproses.toString(),
+                          "Diproses",
+                          Icons.calendar_today_rounded,
+                        ),
+                        const SizedBox(width: 12),
+                        _buildSmallInfoCard(
+                          doProvider.doSelesai.toString(),
+                          "Selesai",
+                          Icons.check_box_outlined,
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 15),
 
@@ -167,7 +171,8 @@ class HomeHeader extends StatelessWidget {
                                     );
                                   }
 
-                                  final total = doProvider.totalDoMasuk;
+                                  final total =
+                                      doProvider.doBelumKonfirmasiTotal;
 
                                   if (total == 0) {
                                     return const Text(

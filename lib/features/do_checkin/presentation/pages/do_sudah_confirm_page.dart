@@ -26,10 +26,12 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
       final token = authProvider.token.toString();
       final userID = authProvider.user?.id;
       final userId = userID.toString();
+      final unitBussinessId = authProvider.unitBusinessId;
 
       await doProvider.fetchListDOSudahConfirm(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
         isRefresh: true,
       );
 
@@ -47,7 +49,11 @@ class _DoSudahConfirmPageState extends State<DoSudahConfirmPage> {
       }
 
       doProvider.checkOpenTimeIn(token: token, userId: userId);
-      doProvider.refreshHasConfirmedDo(token: token, userId: userId);
+      doProvider.refreshHasConfirmedDo(
+        token: token,
+        userId: userId,
+        unitBussinessId: unitBussinessId,
+      );
     });
   }
 

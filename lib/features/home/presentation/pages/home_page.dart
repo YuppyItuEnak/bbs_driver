@@ -64,13 +64,36 @@ class _HomePageState extends State<HomePage> with RouteAware {
     await auth.fetchUserDetails();
     final token = auth.token;
     final userId = auth.user?.id;
+    final unitBussinessId = auth.unitBusinessId;
 
     if (token != null && userId != null && context.mounted) {
       final doProvider = context.read<DoProvider>();
       await doProvider.checkOpenTimeIn(token: token, userId: userId);
-      await doProvider.refreshHasOutstandingDo(token: token, userId: userId);
-      await doProvider.refreshDoMasukTotal(token: token);
-      await doProvider.fetchDoMasuk(token: token, userId: userId);
+      await doProvider.refreshHasOutstandingDo(
+        token: token,
+        userId: userId,
+        unitBussinessId: unitBussinessId,
+      );
+      await doProvider.refreshDoMasukTotal(
+        token: token,
+        unitBussinessId: unitBussinessId,
+        userId: userId,
+      );
+      await doProvider.refreshDoBelumKonfirmasiTotal(
+        token: token,
+        unitBussinessId: unitBussinessId,
+        userId: userId,
+      );
+      await doProvider.refreshDoCounts(
+        token: token,
+        userId: userId,
+        unitBussinessId: unitBussinessId,
+      );
+      await doProvider.fetchDoMasuk(
+        token: token,
+        userId: userId,
+        unitBussinessId: unitBussinessId,
+      );
 
       // === LOG DIAGNOSTIK ===
       print("--- Home State Refresh ---");
@@ -184,6 +207,27 @@ class _HomePageState extends State<HomePage> with RouteAware {
                                 child: GestureDetector(
                                   onTap: canCheckIn
                                       ? () {
+                                          if (doProvider.doMasukTotal == 0) {
+                                            showDialog(
+                                              context: context,
+                                              builder: (ctx) => AlertDialog(
+                                                title: const Text(
+                                                  'Informasi',
+                                                ),
+                                                content: const Text(
+                                                  'Belum ada DO yang dikonfirmasi',
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(ctx),
+                                                    child: const Text('OK'),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                            return;
+                                          }
                                           final auth = context
                                               .read<AuthProvider>();
                                           final token = auth.token;

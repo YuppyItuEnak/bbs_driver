@@ -41,8 +41,13 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final token = authProvider.token;
       final userId = authProvider.user?.id;
+      final unitBussinessId = authProvider.unitBusinessId;
       if (token != null && userId != null) {
-        context.read<DoProvider>().fetchDoMasuk(token: token, userId: userId);
+        context.read<DoProvider>().fetchDoMasuk(
+          token: token,
+          userId: userId,
+          unitBussinessId: unitBussinessId,
+        );
       }
     }
   }
@@ -51,11 +56,13 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final token = authProvider.token;
     final userId = authProvider.user?.id;
+    final unitBussinessId = authProvider.unitBusinessId;
 
     if (token != null && userId != null && mounted) {
       context.read<DoProvider>().fetchDoMasuk(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
         isRefresh: true,
       );
     }
@@ -516,16 +523,16 @@ class _DoBelumConfirmPageState extends State<DoBelumConfirmPage> {
                   return;
                 }
 
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DetailDoPage(
-                      isConfirmed: false,
-                      doId: item.id,
-                      token: token,
-                    ),
-                  ),
-                );
+                // Navigator.push(
+                //   context,
+                //   MaterialPageRoute(
+                //     builder: (_) => DetailDoPage(
+                //       isConfirmed: false,
+                //       doId: item.id,
+                //       token: token,
+                //     ),
+                //   ),
+                // );
               },
               child: Container(
                 padding: const EdgeInsets.all(15),

@@ -19,6 +19,9 @@ class DoProvider extends ChangeNotifier {
 
   List<DeliveryOrderModel> _doList = [];
   int _doMasukTotal = 0;
+  int _doBelumKonfirmasiTotal = 0;
+  int _doDiproses = 0;
+  int _doSelesai = 0;
   DeliveryOrderModel? _detailDO;
   DeliveryOrderModel? get detailDO => _detailDO;
   List<DeliveryOrderDetail> _details = [];
@@ -64,6 +67,9 @@ class DoProvider extends ChangeNotifier {
   List<DeliveryOrderModel> get doList => _doList;
   int get totalDoMasuk => _doList.length;
   int get doMasukTotal => _doMasukTotal;
+  int get doBelumKonfirmasiTotal => _doBelumKonfirmasiTotal;
+  int get doDiproses => _doDiproses;
+  int get doSelesai => _doSelesai;
   bool get isLoading => _isLoading;
   bool get isFetchingMore => _isFetchingMore;
   bool get hasMore => _hasMore;
@@ -73,6 +79,7 @@ class DoProvider extends ChangeNotifier {
   Future<void> fetchDoMasuk({
     required String token,
     required String userId,
+    String? unitBussinessId,
     bool isRefresh = false,
     String? search,
   }) async {
@@ -94,6 +101,7 @@ class DoProvider extends ChangeNotifier {
       final newList = await _repository.getListDOMasuk(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
         page: _page,
         paginate: _paginate,
         search: _searchKeyword,
@@ -122,11 +130,72 @@ class DoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshDoMasukTotal({required String token}) async {
+  Future<void> refreshDoMasukTotal({
+    required String token,
+    String? unitBussinessId,
+    String? userId,
+  }) async {
     try {
-      _doMasukTotal = await _repository.getDoMasukTotal(token: token);
+      _doMasukTotal = await _repository.getDoMasukTotal(
+        token: token,
+        unitBussinessId: unitBussinessId,
+        userId: userId,
+      );
     } catch (_) {
       _doMasukTotal = 0;
+    }
+    notifyListeners();
+  }
+
+  Future<void> refreshDoBelumKonfirmasiTotal({
+    required String token,
+    String? unitBussinessId,
+    String? userId,
+  }) async {
+    try {
+      _doBelumKonfirmasiTotal = await _repository.getDoBelumKonfirmasiTotal(
+        token: token,
+        unitBussinessId: unitBussinessId,
+        userId: userId,
+      );
+    } catch (_) {
+      _doBelumKonfirmasiTotal = 0;
+    }
+    notifyListeners();
+  }
+
+  Future<void> refreshDoCounts({
+    required String token,
+    required String userId,
+    String? unitBussinessId,
+  }) async {
+    try {
+      // Diproses = status 4 (confirmed) + 5 (checked-in)
+      final status4 = await _repository.getDoCountByStatus(
+        token: token,
+        userId: userId,
+        status: '4',
+        unitBussinessId: unitBussinessId,
+      );
+      final status5 = await _repository.getDoCountByStatus(
+        token: token,
+        userId: userId,
+        status: '5',
+        unitBussinessId: unitBussinessId,
+      );
+      _doDiproses = status4 + status5;
+    } catch (_) {
+      _doDiproses = 0;
+    }
+    try {
+      _doSelesai = await _repository.getDoCountByStatus(
+        token: token,
+        userId: userId,
+        status: '3',
+        unitBussinessId: unitBussinessId,
+      );
+    } catch (_) {
+      _doSelesai = 0;
     }
     notifyListeners();
   }
@@ -134,6 +203,7 @@ class DoProvider extends ChangeNotifier {
   Future<void> fetchListDOSudahConfirm({
     required String token,
     required String userId,
+    String? unitBussinessId,
     bool isRefresh = false,
     String? search,
   }) async {
@@ -155,6 +225,7 @@ class DoProvider extends ChangeNotifier {
       final newDoList = await _repository.getListDOSudahConfirm(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
         page: _page,
         paginate: _paginate,
         search: _searchKeyword,
@@ -187,6 +258,7 @@ class DoProvider extends ChangeNotifier {
   Future<void> fetchListDOSudahReceived({
     required String token,
     required String userId,
+    String? unitBussinessId,
     bool isRefresh = false,
     String? search,
   }) async {
@@ -208,6 +280,7 @@ class DoProvider extends ChangeNotifier {
       final newDoList = await _repository.getListDOSudahReceived(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
         page: _page,
         paginate: _paginate,
         search: _searchKeyword,
@@ -383,11 +456,13 @@ class DoProvider extends ChangeNotifier {
   Future<void> refreshHasConfirmedDo({
     required String token,
     required String userId,
+    String? unitBussinessId,
   }) async {
     try {
       _hasConfirmedDo = await _repository.hasConfirmedDo(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
       );
     } catch (_) {
       _hasConfirmedDo = false;
@@ -398,11 +473,13 @@ class DoProvider extends ChangeNotifier {
   Future<void> refreshHasOutstandingDo({
     required String token,
     required String userId,
+    String? unitBussinessId,
   }) async {
     try {
       final confirmed = await fetchConfirmedDoForUser(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
       );
       _hasOutstandingDo = confirmed.isNotEmpty;
       notifyListeners();
@@ -415,10 +492,12 @@ class DoProvider extends ChangeNotifier {
   Future<List<DeliveryOrderModel>> fetchConfirmedDoForUser({
     required String token,
     required String userId,
+    String? unitBussinessId,
   }) async {
     return _repository.getListDOSudahConfirm(
       token: token,
       userId: userId,
+      unitBussinessId: unitBussinessId,
       page: 1,
       paginate: 200,
     );

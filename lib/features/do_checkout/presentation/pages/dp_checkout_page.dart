@@ -232,7 +232,11 @@ class _DpCheckoutPageState extends State<DpCheckoutPage> {
       // );
 
       await doProvider.checkOpenTimeIn(token: token, userId: userId);
-      await doProvider.refreshHasConfirmedDo(token: token, userId: userId);
+      await doProvider.refreshHasConfirmedDo(
+        token: token,
+        userId: userId,
+        unitBussinessId: authProvider.unitBusinessId,
+      );
 
       if (!mounted) return;
       Navigator.pushAndRemoveUntil(

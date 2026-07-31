@@ -25,10 +25,12 @@ class _RiwayatDoPageState extends State<RiwayatDoPage> {
       final token = authProvider.token.toString();
       final userID = authProvider.user?.id;
       final userId = userID.toString();
+      final unitBussinessId = authProvider.unitBusinessId;
 
       doProvider.fetchListDOSudahReceived(
         token: token,
         userId: userId,
+        unitBussinessId: unitBussinessId,
         isRefresh: true,
       );
     });

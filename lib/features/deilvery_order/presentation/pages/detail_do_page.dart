@@ -232,7 +232,10 @@ class _DetailDoPageState extends State<DetailDoPage> {
                 ),
               ),
               // --- BUTTON BOTTOM ---
-              Padding(
+              // Tombol check-in/out hanya untuk DO yang sudah dikonfirmasi (4)
+              // atau sedang dikunjungi (5). Status 3 (received/terkirim) tidak bisa.
+              if (model.status == 4 || model.status == 5)
+                Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: SizedBox(
                   width: double.infinity,

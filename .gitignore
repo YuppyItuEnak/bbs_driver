@@ -2,6 +2,9 @@
 .dart_tool/
 .build/
 build/
+pubspec.lock
+CLAUDE.md
+FLOW.md
 
 .flutter-plugins
 .flutter-plugins-dependencies
