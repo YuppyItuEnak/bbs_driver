@@ -351,28 +351,43 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
           );
         }
 
-        // NOTE: sesuaikan nama method ini dengan yang tersedia di
-        // ComplainRepository. Idealnya complaint dibuat dulu (dapat id),
-        // baru foto di-upload terpisah (multipart) menggunakan id tsb,
-        // atau createComplaintWithDetails sudah menerima parameter images.
-        final created = await _complainRepo.createComplaintWithDetails(
+        // Create complaint (without images in payload).
+        final createdId = await _complainRepo.createComplaintWithDetails(
           token: token,
           data: payload,
         );
 
-        if (_pickedImages.isNotEmpty) {
-          try {
-            // TODO: ganti dengan method upload foto yang sesuai di
-            // ComplainRepository, contoh:
-            // await _complainRepo.uploadComplaintImages(
-            //   token: token,
-            //   complaintId: created.id, // sesuaikan dengan return type
-            //   images: _pickedImages,
-            // );
-          } catch (e) {
-            if (kDebugMode) {
-              debugPrint('[COMPLAIN_UI] upload image failed: $e');
+        // Upload images separately via /t_complain_d_images.
+        if (_pickedImages.isNotEmpty && createdId != null) {
+          final detail = await _complainRepo.getDetailComplaint(
+            token: token,
+            id: createdId,
+          );
+
+          for (final item in detail.items) {
+            final complainDId = item.id;
+            if (complainDId == null || complainDId.isEmpty) continue;
+
+            for (final file in _pickedImages) {
+              final imageUrl = await _complainRepo.uploadFile(
+                token: token,
+                file: file,
+              );
+              if (imageUrl != null && imageUrl.isNotEmpty) {
+                final path = imageUrl.startsWith('/') ? imageUrl : '/$imageUrl';
+                await _complainRepo.addComplainImage(
+                  token: token,
+                  complainDId: complainDId,
+                  imageUrl: path,
+                );
+              }
             }
+          }
+
+          if (kDebugMode) {
+            debugPrint(
+              '[COMPLAIN_UI] ${_pickedImages.length} images uploaded for complaint $createdId',
+            );
           }
         }
       }

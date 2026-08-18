@@ -108,7 +108,7 @@ class ComplainItemModel {
       reasonId: json['reason_id'],
       soId: json['so_id'],
       sjId: json['sj_id'],
-      images: (json['t_complain_d_imagess'] as List? ?? [])
+      images: (json['t_complain_d_images'] as List? ?? [])
           .map((e) => ComplainImageModel.fromJson(e))
           .toList(),
     );

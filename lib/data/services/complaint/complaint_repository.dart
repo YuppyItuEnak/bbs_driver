@@ -116,7 +116,7 @@ class ComplainRepository {
     return ComplainDetailModel.fromJson(body['data']);
   }
 
-  Future<void> createComplaint({
+  Future<String?> createComplaint({
     required String token,
     required ComplainCreateModel data,
   }) async {
@@ -134,27 +134,15 @@ class ComplainRepository {
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw Exception("Gagal membuat complain");
     }
+
+    final body = jsonDecode(res.body);
+    return body['data']?['id'] as String?;
   }
 
-  Future<void> createComplaintWithDetails({
+  Future<String?> createComplaintWithDetails({
     required String token,
     required ComplainCreateModel data,
   }) async {
-    // Upload any picked images and convert them into imageUrl strings.
-    for (final item in data.items) {
-      if (item.imageFiles.isEmpty) continue;
-
-      final urls = <String>[];
-      for (final file in item.imageFiles) {
-        final url = await uploadFile(token: token, file: file);
-        if (url != null && url.isNotEmpty) urls.add(url);
-      }
-
-      if (urls.isNotEmpty) {
-        item.imageUrls = [...item.imageUrls, ...urls];
-      }
-    }
-
     final uri = Uri.parse('$baseUrl/dynamic/t_complain/with-details');
 
     if (kDebugMode) {
@@ -176,6 +164,36 @@ class ComplainRepository {
     }
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw Exception("Gagal membuat complain");
+    }
+
+    final body = jsonDecode(res.body);
+    return body['data']?['id'] as String?;
+  }
+
+  Future<void> addComplainImage({
+    required String token,
+    required String complainDId,
+    required String imageUrl,
+  }) async {
+    final uri = Uri.parse('$baseUrl/dynamic/t_complain_d_images');
+
+    final res = await http.post(
+      uri,
+      headers: {
+        "Authorization": "Bearer $token",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode({
+        "complain_d_id": complainDId,
+        "image_url": imageUrl,
+      }),
+    );
+
+    if (kDebugMode) {
+      debugPrint('[COMPLAIN_IMG] POST $uri status=${res.statusCode}');
+    }
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw Exception("Gagal menyimpan foto komplain");
     }
   }
 
