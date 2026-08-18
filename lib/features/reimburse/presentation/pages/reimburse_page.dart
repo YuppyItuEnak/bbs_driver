@@ -133,7 +133,8 @@ class _ReimburseListContentState extends State<_ReimburseListContent> {
             if (reimburseCheck.kmAwal != null && reimburseCheck.kmAkhir != 0) {
               buttonDisabled = true;
               onPressedAction = null;
-            } else if (reimburseCheck.kmAwal != null &&
+            } else 
+            if (reimburseCheck.kmAwal != null &&
                 reimburseCheck.kmAkhir == 0) {
               onPressedAction = () => Navigator.push(
                 context,
@@ -145,7 +146,8 @@ class _ReimburseListContentState extends State<_ReimburseListContent> {
                 ),
               );
             }
-          }
+          };
+          
 
           return Container(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
@@ -178,7 +180,7 @@ class _ReimburseListContentState extends State<_ReimburseListContent> {
 
   Widget _buildReimburseTile(BuildContext context, ReimburseModel item) {
     final dateStr = item.date != null
-        ? DateFormat('dd Des yyyy').format(item.date!)
+        ? DateFormat('dd mm yyyy').format(item.date!)
         : '-';
 
     // Warna status sesuai gambar
@@ -189,6 +191,9 @@ class _ReimburseListContentState extends State<_ReimburseListContent> {
         break;
       case 'LUNAS':
         statusColor = const Color(0xFF81C784);
+        break;
+      case 'REVISED':
+        statusColor = const Color(0xFFF6C652);
         break;
       default:
         statusColor = Colors.grey;
@@ -203,6 +208,13 @@ class _ReimburseListContentState extends State<_ReimburseListContent> {
               builder: (_) => DetailReimbursePage(reimburseId: item.id!),
             ),
           );
+        // }else if(item.status == 'REVISED'){
+        //   Navigator.push(
+        //     context,
+        //     MaterialPageRoute(
+        //       builder: (_) => AddReimbursePage(reimburseId: item.id!, isEdit: true,),
+        //     ),
+        //   );
         }
       },
       child: Container(

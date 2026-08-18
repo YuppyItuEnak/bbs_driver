@@ -1,5 +1,7 @@
 import 'package:bbs_driver/core/constants/api_constants.dart';
 import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.dart';
+import 'package:bbs_driver/features/reimburse/presentation/pages/add_reimburse_page.dart';
+import 'package:bbs_driver/features/reimburse/presentation/pages/edit_reimburse_page.dart';
 import 'package:bbs_driver/features/reimburse/presentation/providers/reimburse_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -98,6 +100,11 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
           final dateStr = item.date != null
               ? DateFormat('dd MMMM yyyy', 'id_ID').format(item.date!)
               : '-';
+
+          // Tombol Edit cuma muncul kalau status REVISED atau DRAFT
+          final statusUpper = item.status?.toUpperCase();
+          final canEdit = statusUpper == 'DRAFT';
+          final revisedEdit = statusUpper == 'REVISED';
 
           // Warna Badge Status
           Color statusBgColor = Colors.white24;
@@ -288,30 +295,129 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
                 ),
               ),
 
-              // BOTTOM BUTTON
+              // BOTTOM BUTTON(S)
               Padding(
                 padding: const EdgeInsets.all(24.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: primaryPurple,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                child: Row(
+                  children: [
+                    if (canEdit) ...[
+                      Expanded(
+                        child: SizedBox(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AddReimbursePage(
+                                    reimburseId: item.id,
+                                    isEdit: true,
+                                  ),
+                                ),
+                              );
+                              // Refresh detail setelah balik dari edit,
+                              // siapa tahu datanya berubah.
+                              if (result != null && context.mounted) {
+                                _fetchDetail();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: primaryPurple,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: const BorderSide(
+                                  color: primaryPurple,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              "Edit",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    if (revisedEdit) ...[
+                      Expanded(
+                        child: SizedBox(
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              final result = await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditReimbursePage(
+                                    reimburseId: item.id,
+                                    isEdit: true,
+                                  ),
+                                ),
+                              );
+                              // Refresh detail setelah balik dari edit,
+                              // siapa tahu datanya berubah.
+                              if (result != null && context.mounted) {
+                                _fetchDetail();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: primaryPurple,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                                side: const BorderSide(
+                                  color: primaryPurple,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: const Text(
+                              "Edit Revised",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      child: SizedBox(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: canEdit
+                                ? primaryPurple
+                                : Colors.white,
+                            foregroundColor: canEdit
+                                ? Colors.white
+                                : primaryPurple,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: const Text(
+                            "Kembali",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    child: const Text(
-                      "Kembali",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
               ),
             ],
