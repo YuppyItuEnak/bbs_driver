@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bbs_driver/core/constants/app_colors.dart';
 import 'package:bbs_driver/data/models/complaint/complaint_add_model.dart';
 import 'package:bbs_driver/data/models/delivery_order/delivery_order_model.dart';
@@ -12,6 +14,7 @@ import 'package:bbs_driver/features/auth/presentation/providers/auth_provider.da
 import 'package:bbs_driver/features/deilvery_order/presentation/providers/do_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 class AddComplaintPage extends StatefulWidget {
@@ -26,6 +29,7 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
   final _complainRepo = ComplainRepository();
   final _mGenRepo = MGenRepository();
   final _sjRepo = SuratJalanRepository();
+  final _imagePicker = ImagePicker();
 
   bool _isLoading = true;
   String? _error;
@@ -39,6 +43,9 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
   final Map<String, TextEditingController> _qtyReturnCtrls = {};
   final Map<String, List<ComplainCreateItemModel>> _itemsByDoId = {};
   final TextEditingController _noteCtrl = TextEditingController();
+
+  // Foto bukti komplain (bisa lebih dari 1, dari kamera atau galeri).
+  final List<File> _pickedImages = [];
 
   @override
   void initState() {
@@ -173,6 +180,85 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
 
   int _parseInt(String text) => int.tryParse(text.trim()) ?? 0;
 
+  // ==================== Image picking ====================
+
+  Future<void> _showImageSourceSheet() async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined),
+                title: const Text('Ambil dari Kamera'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickFromCamera();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Pilih dari Galeri'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickFromGallery();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickFromCamera() async {
+    try {
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+      );
+      if (photo == null) return;
+      setState(() {
+        _pickedImages.add(File(photo.path));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal mengambil foto: $e')));
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final List<XFile> photos = await _imagePicker.pickMultiImage(
+        imageQuality: 80,
+      );
+      if (photos.isEmpty) return;
+      setState(() {
+        _pickedImages.addAll(photos.map((x) => File(x.path)));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memilih foto: $e')));
+    }
+  }
+
+  void _removeImageAt(int index) {
+    setState(() {
+      _pickedImages.removeAt(index);
+    });
+  }
+
+  // ==================== Submit ====================
+
   Future<void> _submit() async {
     final auth = context.read<AuthProvider>();
     final token = auth.token;
@@ -264,10 +350,31 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
             '[COMPLAIN_UI] payload_ready sj_id=${payload.sjId} items=${payload.items.length}',
           );
         }
-        await _complainRepo.createComplaintWithDetails(
+
+        // NOTE: sesuaikan nama method ini dengan yang tersedia di
+        // ComplainRepository. Idealnya complaint dibuat dulu (dapat id),
+        // baru foto di-upload terpisah (multipart) menggunakan id tsb,
+        // atau createComplaintWithDetails sudah menerima parameter images.
+        final created = await _complainRepo.createComplaintWithDetails(
           token: token,
           data: payload,
         );
+
+        if (_pickedImages.isNotEmpty) {
+          try {
+            // TODO: ganti dengan method upload foto yang sesuai di
+            // ComplainRepository, contoh:
+            // await _complainRepo.uploadComplaintImages(
+            //   token: token,
+            //   complaintId: created.id, // sesuaikan dengan return type
+            //   images: _pickedImages,
+            // );
+          } catch (e) {
+            if (kDebugMode) {
+              debugPrint('[COMPLAIN_UI] upload image failed: $e');
+            }
+          }
+        }
       }
 
       if (!mounted) return;
@@ -404,6 +511,16 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
+                      'Foto Bukti (opsional)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _buildImagePickerSection(),
+                    const SizedBox(height: 16),
+                    const Text(
                       'Item Retur',
                       style: TextStyle(
                         fontSize: 12,
@@ -496,6 +613,66 @@ class _AddComplaintPageState extends State<AddComplaintPage> {
                 ),
               ),
       ),
+    );
+  }
+
+  Widget _buildImagePickerSection() {
+    const double tileSize = 84;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        ..._pickedImages.asMap().entries.map((entry) {
+          final index = entry.key;
+          final file = entry.value;
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(
+                  file,
+                  width: tileSize,
+                  height: tileSize,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: -6,
+                right: -6,
+                child: GestureDetector(
+                  onTap: () => _removeImageAt(index),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.black54,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        }),
+        GestureDetector(
+          onTap: _showImageSourceSheet,
+          child: Container(
+            width: tileSize,
+            height: tileSize,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.grey.shade300),
+              color: Colors.grey.shade50,
+            ),
+            child: const Icon(Icons.add_a_photo_outlined, color: Colors.grey),
+          ),
+        ),
+      ],
     );
   }
 

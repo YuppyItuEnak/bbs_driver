@@ -10,26 +10,22 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-enum FormMode { create, update, fullEdit }
-
 class EditReimbursePage extends StatelessWidget {
-  final String? reimburseId;
-  final bool isEdit;
-  const EditReimbursePage({super.key, this.reimburseId, this.isEdit = false});
+  final String reimburseId;
+  const EditReimbursePage({super.key, required this.reimburseId});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => ReimburseProvider(),
-      child: _EditReimburseContent(reimburseId: reimburseId, isEdit: isEdit),
+      child: _EditReimburseContent(reimburseId: reimburseId),
     );
   }
 }
 
 class _EditReimburseContent extends StatefulWidget {
-  final String? reimburseId;
-  final bool isEdit;
-  const _EditReimburseContent({this.reimburseId, required this.isEdit});
+  final String reimburseId;
+  const _EditReimburseContent({required this.reimburseId});
 
   @override
   State<_EditReimburseContent> createState() => _EditReimburseContentState();
@@ -42,149 +38,44 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
   final _endKmController = TextEditingController();
   final _noteController = TextEditingController();
 
-  double _calculatedTotal = 0.0;
-
   String _selectedType = "Driver";
   File? _pickedFotoAwal;
   File? _pickedFotoAkhir;
-  File? _pickedAttachment;
   String? _fotoAwalUrl;
   String? _fotoAkhirUrl;
-  FormMode _formMode = FormMode.create;
-
-  // ReadOnly flags for conditional editing
-  // ReadOnly flags for conditional editing
-  bool _isDateReadOnly = false;
-  bool _isStartKmReadOnly = false;
-  bool _isEndKmReadOnly = false;
-  bool _isNoteReadOnly = false;
-  bool _isFotoAwalReadOnly = false;
-  bool _isFotoAkhirReadOnly = false;
-
-  // True kalau status item = Draft / Revised -> semua field & tombol dibuka
-  bool _isEditableStatus = false;
-
-  static const _editableStatuses = ['REVISED'];
-
-  void _setReadOnlyFlagsForEditable() {
-    _isDateReadOnly = false;
-    _isStartKmReadOnly = false;
-    _isEndKmReadOnly = false;
-    _isNoteReadOnly = false;
-    _isFotoAwalReadOnly = false;
-    _isFotoAkhirReadOnly = false;
-  }
 
   @override
   void initState() {
     super.initState();
-    // Reimburse total is not auto-calculated for driver app (always 0 by default).
-    _setTotalZero();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeForm();
+      _loadDetail();
     });
   }
 
-  Future<void> _initializeForm() async {
+  Future<void> _loadDetail() async {
     final auth = context.read<AuthProvider>();
     final provider = context.read<ReimburseProvider>();
+    if (auth.token == null) return;
 
-    if (auth.token != null && auth.user!.id != null) {
-      // Check if there's existing reimburse data for today
-      await provider.checkReimburseToday(
-        token: auth.token!,
-        salesId: auth.user!.id!,
-      );
+    await provider.getDetail(auth.token!, widget.reimburseId);
+    if (provider.selected == null || !mounted) return;
 
-      final checkData = provider.reimburseCheck;
-
-      final targetId = widget.reimburseId ?? checkData?.id;
-      if (targetId != null) {
-        // Load existing data
-        await provider.getDetail(auth.token!, targetId);
-        if (provider.selected != null) {
-          final item = provider.selected!;
-          setState(() {
-            _dateController.text = DateFormat('dd/MM/yyyy').format(item.date);
-            _calculatedTotal = item.total ?? 0.0;
-            _amountController.text = item.total != null
-                ? item.total!.toStringAsFixed(0)
-                : '';
-            _startKmController.text = item.kmAwal.toString();
-            _endKmController.text = item.kmAkhir.toString();
-            _noteController.text = item.note ?? '';
-            _selectedType = "Driver";
-            _fotoAwalUrl = item.fotoAwal != null && item.fotoAwal!.isNotEmpty
-                ? '${ApiConstants.baseUrl2}/${item.fotoAwal}'
-                : null;
-            _fotoAkhirUrl = item.fotoAkhir != null && item.fotoAkhir!.isNotEmpty
-                ? '${ApiConstants.baseUrl2}/${item.fotoAkhir}'
-                : null;
-
-            // Status Draft/Revised -> buka semua field untuk diedit
-            _isEditableStatus = _editableStatuses.contains(
-              item.status?.toUpperCase(),
-            );
-          });
-        }
-
-        // Determine form mode based on existing data
-        final kmAwal = provider.selected?.kmAwal;
-        final kmAkhir = provider.selected?.kmAkhir;
-
-        if (_isEditableStatus) {
-          setState(() {
-            _formMode =
-                FormMode.update; // pakai mode 'update' agar tombol muncul
-            _setReadOnlyFlagsForEditable();
-          });
-        } else if (kmAwal != null && (kmAkhir == null || kmAkhir == 0)) {
-          setState(() {
-            _formMode = FormMode.update;
-            _setReadOnlyFlagsForUpdate();
-          });
-        } else if (kmAwal != null && kmAkhir != null && kmAkhir != 0) {
-          // Condition 3: Complete data
-          setState(() {
-            _formMode = FormMode.fullEdit;
-            _setReadOnlyFlagsForFullEdit();
-          });
-        }
-      } else {
-        // Condition 1: No existing data
-        _formMode = FormMode.create;
-        _dateController.text = DateFormat('dd/MM/yyyy').format(DateTime.now());
-        _setTotalZero();
-        _setReadOnlyFlagsForCreate();
-      }
-    }
-  }
-
-  void _setReadOnlyFlagsForCreate() {
-    _isDateReadOnly = true;
-    _isStartKmReadOnly = false;
-    _isEndKmReadOnly = true;
-    _isNoteReadOnly = true;
-    _isFotoAwalReadOnly = false;
-    _isFotoAkhirReadOnly = true;
-  }
-
-  void _setReadOnlyFlagsForUpdate() {
-    _isDateReadOnly = true;
-    _isStartKmReadOnly = true;
-    _isEndKmReadOnly = false;
-    _isNoteReadOnly = true;
-    _isFotoAwalReadOnly = true;
-    _isFotoAkhirReadOnly = false;
-  }
-
-  void _setReadOnlyFlagsForFullEdit() {
-    _isDateReadOnly = true;
-    _isStartKmReadOnly = true;
-    _isEndKmReadOnly = true;
-    _isNoteReadOnly = true;
-    _isFotoAwalReadOnly = true;
-    _isFotoAkhirReadOnly = true;
+    final item = provider.selected!;
+    setState(() {
+      _dateController.text = DateFormat('dd/MM/yyyy').format(item.date);
+      _amountController.text =
+          item.total != null ? item.total!.toStringAsFixed(0) : '0';
+      _startKmController.text = item.kmAwal.toString();
+      _endKmController.text = item.kmAkhir.toString();
+      _noteController.text = item.note ?? '';
+      _selectedType = "Driver";
+      _fotoAwalUrl = item.fotoAwal != null && item.fotoAwal!.isNotEmpty
+          ? '${ApiConstants.baseUrl2}/${item.fotoAwal}'
+          : null;
+      _fotoAkhirUrl = item.fotoAkhir != null && item.fotoAkhir!.isNotEmpty
+          ? '${ApiConstants.baseUrl2}/${item.fotoAkhir}'
+          : null;
+    });
   }
 
   @override
@@ -195,11 +86,6 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
     _endKmController.dispose();
     _noteController.dispose();
     super.dispose();
-  }
-
-  void _setTotalZero() {
-    _calculatedTotal = 0.0;
-    _amountController.text = "0";
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -217,21 +103,226 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
   Future<void> _pickImage(ImageSource source, Function(File?) onPick) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: source);
+    setState(() {
+      onPick(pickedFile != null ? File(pickedFile.path) : null);
+    });
+  }
 
-    if (pickedFile != null) {
-      setState(() {
-        onPick(File(pickedFile.path));
-      });
+  bool _validateForm() {
+    final kmAwal = _parseNumber(_startKmController.text);
+    final kmAkhir = _parseNumber(_endKmController.text);
+    final totalAmount = _parseNumber(_amountController.text);
+
+    if (totalAmount <= 0) {
+      _showError('Jumlah reimburse wajib diisi dan tidak boleh 0.');
+      return false;
+    }
+    if (kmAwal <= 0) {
+      _showError('KM awal wajib diisi.');
+      return false;
+    }
+    if (_pickedFotoAwal == null &&
+        (_fotoAwalUrl == null || _fotoAwalUrl!.isEmpty)) {
+      _showError('Foto KM awal wajib diisi.');
+      return false;
+    }
+    if (kmAkhir <= 0) {
+      _showError('KM akhir wajib diisi.');
+      return false;
+    }
+    if (_pickedFotoAkhir == null &&
+        (_fotoAkhirUrl == null || _fotoAkhirUrl!.isEmpty)) {
+      _showError('Foto KM akhir wajib diisi.');
+      return false;
+    }
+    if (kmAkhir < kmAwal) {
+      _showError('KM akhir tidak boleh kurang dari KM awal.');
+      return false;
+    }
+    return true;
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
+  }
+
+  void _submit() {
+    if (!_validateForm()) return;
+    _showConfirmDialog();
+  }
+
+  void _showConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Apakah Anda yakin?",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "Pastikan data yang input benar",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text(
+                      "Batal",
+                      style: TextStyle(color: Color(0xFF5D5FEF), fontSize: 14),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(dialogContext);
+                      await _doUpdate();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF5D5FEF),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      "Iya",
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  double _parseNumber(String text) {
+    // Handle Indonesian format: "50.000" → 50000, "1.250.000" → 1250000
+    final cleaned = text.replaceAll('.', '');
+    return double.tryParse(cleaned) ?? 0;
+  }
+
+  /// Strip baseUrl2 prefix from full URL to get relative path for API.
+  /// e.g. "https://server.qqltech.com:7180/uploads/file.jpg" → "uploads/file.jpg"
+  String? _toRelativePath(String? fullUrl) {
+    if (fullUrl == null || fullUrl.isEmpty) return null;
+    final prefix = '${ApiConstants.baseUrl2}/';
+    if (fullUrl.startsWith(prefix)) {
+      return fullUrl.substring(prefix.length);
+    }
+    return fullUrl;
+  }
+
+  Future<void> _doUpdate() async {
+    final auth = context.read<AuthProvider>();
+    final provider = context.read<ReimburseProvider>();
+
+    if (auth.token == null || auth.user?.id == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Autentikasi gagal, silakan login ulang.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final date = DateFormat('dd/MM/yyyy').parse(_dateController.text);
+    final existingItem = provider.selected!;
+
+    final updatedReimburse = ReimburseCreateModel(
+      salesId: auth.user!.id!,
+      type: _selectedType,
+      date: date,
+      unitBusinessId: existingItem.unitBusinessId ?? auth.unitBusinessId ?? "",
+      total: _parseNumber(_amountController.text),
+      kmAwal: _parseNumber(_startKmController.text),
+      kmAkhir: _parseNumber(_endKmController.text),
+      note: _noteController.text,
+      fotoAwal: _pickedFotoAwal != null
+          ? ""
+          : (_toRelativePath(existingItem.fotoAwal) ?? ""),
+      fotoAkhir: _pickedFotoAkhir != null
+          ? ""
+          : (_toRelativePath(existingItem.fotoAkhir) ?? ""),
+      approvalCount: existingItem.approvalCount ?? 0,
+      approvedCount: existingItem.approvedCount ?? 0,
+      approvalLevel: existingItem.currentApprovalLevel ?? 1,
+      status: "DRAFT",
+    );
+
+    final success = await provider.update(
+      auth.token!,
+      widget.reimburseId,
+      updatedReimburse,
+      _pickedFotoAwal,
+      _pickedFotoAkhir,
+    );
+
+    if (!mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal memperbarui reimburse: ${provider.error ?? "Terjadi kesalahan"}',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final approvalSuccess = await provider.requestApproval(
+      token: auth.token!,
+      reimburseId: widget.reimburseId,
+      userId: auth.user!.id,
+    );
+
+    if (!mounted) return;
+
+    if (approvalSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Reimburse berhasil diajukan untuk approval!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const HomePage()),
+        (_) => false,
+      );
     } else {
-      setState(() {
-        onPick(null);
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal mengajukan approval: ${provider.error ?? "Terjadi kesalahan"}',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    print('🔥🔥🔥 EDIT REIMBURSE BUILD 🔥🔥🔥');
     const primaryPurple = Color(0xFF5D5FEF);
 
     return SafeArea(
@@ -242,8 +333,8 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
           elevation: 0,
           centerTitle: true,
           leading: const BackButton(color: Colors.black),
-          title: Text(
-            widget.isEdit ? 'Edit Reimburse' : 'Tambah Reimburse',
+          title: const Text(
+            'Edit Reimburse',
             style: TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.w400,
@@ -253,6 +344,10 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
         ),
         body: Consumer<ReimburseProvider>(
           builder: (context, provider, child) {
+            if (provider.isLoading && provider.selected == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
             return Column(
               children: [
                 Expanded(
@@ -269,10 +364,7 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
                           controller: _dateController,
                           hint: "dd/MM/yyyy",
                           icon: Icons.calendar_today_outlined,
-                          readOnly: _isDateReadOnly,
-                          onTap: _isDateReadOnly
-                              ? null
-                              : () => _selectDate(context),
+                          onTap: () => _selectDate(context),
                         ),
                         const SizedBox(height: 20),
 
@@ -280,93 +372,69 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
                         _buildDropdown(),
                         const SizedBox(height: 20),
 
-                        // Driver reimburse uses KM awal/akhir + photo awal/akhir (step-based)
-                        if (_selectedType == "Driver") ...[
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel("Kilometer Awal*"),
-                                    _buildTextField(
-                                      controller: _startKmController,
-                                      hint: "11.250",
-                                      readOnly: _isStartKmReadOnly,
-                                    ),
-                                  ],
-                                ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel("Kilometer Awal*"),
+                                  _buildTextField(
+                                    controller: _startKmController,
+                                    hint: "11.250",
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel("Kilometer Akhir*"),
-                                    _buildTextField(
-                                      controller: _endKmController,
-                                      hint: "12.500",
-                                      readOnly: _isEndKmReadOnly,
-                                    ),
-                                  ],
-                                ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel("Kilometer Akhir*"),
+                                  _buildTextField(
+                                    controller: _endKmController,
+                                    hint: "12.500",
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          _buildLabel("Jumlah Reimburse (Rp)"),
-                          _buildTextField(
-                            controller: _amountController,
-                            hint: "50.000",
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildPhotoUpload(
-                                  "Foto KM awal",
-                                  _pickedFotoAwal,
-                                  (file) => _pickedFotoAwal = file,
-                                  readOnly: _isFotoAwalReadOnly,
-                                  imageUrl: _fotoAwalUrl,
-                                ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        _buildLabel("Jumlah Reimburse (Rp)"),
+                        _buildTextField(
+                          controller: _amountController,
+                          hint: "50.000",
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildPhotoUpload(
+                                "Foto KM awal",
+                                _pickedFotoAwal,
+                                (file) => _pickedFotoAwal = file,
+                                imageUrl: _fotoAwalUrl,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: _buildPhotoUpload(
-                                  "Foto KM akhir",
-                                  _pickedFotoAkhir,
-                                  (file) => _pickedFotoAkhir = file,
-                                  readOnly: _isFotoAkhirReadOnly,
-                                  imageUrl: _fotoAkhirUrl,
-                                ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildPhotoUpload(
+                                "Foto KM akhir",
+                                _pickedFotoAkhir,
+                                (file) => _pickedFotoAkhir = file,
+                                imageUrl: _fotoAkhirUrl,
                               ),
-                            ],
-                          ),
-                        ] else ...[
-                          _buildLabel("Jumlah Reimburse"),
-                          _buildTextField(
-                            controller: _amountController,
-                            hint: "5.000",
-                          ),
-                          const SizedBox(height: 20),
-                          _buildLabel("Attachment"),
-                          _buildPhotoUpload(
-                            null,
-                            _pickedAttachment,
-                            (file) => _pickedAttachment = file,
-                            height: 180,
-                            readOnly: false,
-                          ),
-                        ],
-
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 20),
                         _buildLabel("Catatan"),
                         _buildTextField(
                           controller: _noteController,
                           hint: "",
                           maxLines: 4,
-                          readOnly: _isNoteReadOnly,
                         ),
                         const SizedBox(height: 40),
                       ],
@@ -374,7 +442,7 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
                   ),
                 ),
 
-                // Bottom Buttons Container
+                // Submit button
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -387,110 +455,37 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
                       ),
                     ],
                   ),
-                  child: (_formMode == FormMode.fullEdit && !_isEditableStatus)
-                      ? const SizedBox.shrink() // No buttons for complete data
-                      : Row(
-                          children: [
-                            if (_formMode == FormMode.create) ...[
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: provider.isLoading
-                                      ? null
-                                      : () {
-                                          debugPrint(
-                                            '>>> AJUKAN REVISED DITEKAN',
-                                          );
-
-                                          if (_validateForm()) {
-                                            _showConfirmDialog(
-                                              context,
-                                              provider,
-                                              true,
-                                            );
-                                          }
-                                        },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                      side: const BorderSide(
-                                        color: Color(0xFF5D5FEF),
-                                      ),
-                                    ),
-                                  ),
-                                  child: provider.isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            color: Color(0xFF5D5FEF),
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : const Text(
-                                          "Simpan",
-                                          style: TextStyle(
-                                            color: Color(0xFF5D5FEF),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            ] else if (_formMode == FormMode.update) ...[
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: provider.isLoading
-                                      ? null
-                                      : () {
-                                          debugPrint(
-                                            '>>> AJUKAN REVISED DITEKAN',
-                                          );
-
-                                          if (_validateForm()) {
-                                            _showConfirmDialog(
-                                              context,
-                                              provider,
-                                              true,
-                                            );
-                                          }
-                                        },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: primaryPurple,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  child: provider.isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : const Text(
-                                          "Ajukan",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                            ],
-                          ],
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: provider.isLoading ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryPurple,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
+                      ),
+                      child: provider.isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              "Ajukan",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
               ],
             );
@@ -519,16 +514,13 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
     required String hint,
     IconData? icon,
     int maxLines = 1,
-    bool readOnly = false,
     VoidCallback? onTap,
-    ValueChanged<String>? onChanged,
   }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      readOnly: readOnly,
+      readOnly: onTap != null,
       onTap: onTap,
-      onChanged: onChanged,
       style: const TextStyle(fontSize: 13),
       keyboardType: hint.contains("Kilometer") || hint.contains("Jumlah")
           ? TextInputType.number
@@ -586,7 +578,6 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
     File? currentImage,
     Function(File?) onImagePicked, {
     double height = 140,
-    bool readOnly = false,
     String? imageUrl,
   }) {
     final hasImage =
@@ -604,14 +595,12 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
             ),
           ),
         InkWell(
-          onTap: readOnly
-              ? null
-              : () => _pickImage(ImageSource.camera, onImagePicked),
+          onTap: () => _pickImage(ImageSource.camera, onImagePicked),
           child: Container(
             height: height,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFF), // Light blue-ish grey background
+              color: const Color(0xFFF9FAFF),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade100),
               image: hasImage
@@ -638,420 +627,6 @@ class _EditReimburseContentState extends State<_EditReimburseContent> {
           ),
         ),
       ],
-    );
-  }
-
-  bool _validateForm() {
-    if (_selectedType != 'Driver') return true;
-
-    final kmAwal = double.tryParse(_startKmController.text) ?? 0;
-    final kmAkhir = double.tryParse(_endKmController.text) ?? 0;
-    final totalAmount = double.tryParse(_amountController.text) ?? 0;
-
-    debugPrint('===== VALIDATE REVISED =====');
-    debugPrint('KM AWAL  : $kmAwal');
-    debugPrint('KM AKHIR : $kmAkhir');
-    debugPrint('TOTAL    : $totalAmount');
-
-    // Total reimburse
-    if (totalAmount <= 0) {
-      _showError('Jumlah reimburse wajib diisi dan tidak boleh 0.');
-      return false;
-    }
-
-    // KM awal
-    if (kmAwal <= 0) {
-      _showError('KM awal wajib diisi.');
-      return false;
-    }
-
-    // Foto KM awal
-    final hasFotoAwal =
-        _pickedFotoAwal != null ||
-        (_fotoAwalUrl != null && _fotoAwalUrl!.isNotEmpty);
-
-    if (!hasFotoAwal) {
-      _showError('Foto KM awal wajib diisi.');
-      return false;
-    }
-
-    // KM akhir
-    if (kmAkhir <= 0) {
-      _showError('KM akhir wajib diisi.');
-      return false;
-    }
-
-    // Foto KM akhir
-    final hasFotoAkhir =
-        _pickedFotoAkhir != null ||
-        (_fotoAkhirUrl != null && _fotoAkhirUrl!.isNotEmpty);
-
-    if (!hasFotoAkhir) {
-      _showError('Foto KM akhir wajib diisi.');
-      return false;
-    }
-
-    // KM akhir tidak boleh lebih kecil
-    if (kmAkhir < kmAwal) {
-      _showError('KM akhir tidak boleh kurang dari KM awal.');
-      return false;
-    }
-
-    return true;
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  void _showConfirmDialog(
-    BuildContext context,
-    ReimburseProvider provider,
-    bool isApproval,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Apakah Anda yakin?",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              "Pastikan data yang input benar",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text(
-                      "Batal",
-                      style: TextStyle(color: Color(0xFF5D5FEF), fontSize: 14),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(context); // Close the dialog
-
-                      final auth = context.read<AuthProvider>();
-                      if (auth.token == null || auth.user!.id == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Autentikasi gagal, silakan login ulang.',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-
-                      // Validate required fields per step.
-                      if (_selectedType == 'Driver') {
-                        final kmAwal =
-                            double.tryParse(_startKmController.text) ?? 0;
-                        final kmAkhir =
-                            double.tryParse(_endKmController.text) ?? 0;
-
-                        if (_isEditableStatus) {
-                          // Semua field terbuka -> validasi semua
-                          if (kmAwal <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('KM awal wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          final hasFotoAwal =
-                              _pickedFotoAwal != null ||
-                              (_fotoAwalUrl != null &&
-                                  _fotoAwalUrl!.isNotEmpty);
-                          if (!hasFotoAwal) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Foto KM awal wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          if (kmAkhir <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('KM akhir wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          final hasFotoAkhir =
-                              _pickedFotoAkhir != null ||
-                              (_fotoAkhirUrl != null &&
-                                  _fotoAkhirUrl!.isNotEmpty);
-                          if (!hasFotoAkhir) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Foto KM akhir wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          if (kmAkhir < kmAwal) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'KM akhir tidak boleh kurang dari KM awal.',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                        } else if (_formMode == FormMode.create) {
-                          if (kmAwal <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('KM awal wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          final hasFotoAwal =
-                              _pickedFotoAwal != null ||
-                              (_fotoAwalUrl != null &&
-                                  _fotoAwalUrl!.isNotEmpty);
-                          if (!hasFotoAwal) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Foto KM awal wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                        }
-
-                        if (_formMode == FormMode.update) {
-                          if (kmAkhir <= 0) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('KM akhir wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          final hasFotoAkhir =
-                              _pickedFotoAkhir != null ||
-                              (_fotoAkhirUrl != null &&
-                                  _fotoAkhirUrl!.isNotEmpty);
-                          if (!hasFotoAkhir) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Foto KM akhir wajib diisi.'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                          if (kmAwal > 0 && kmAkhir > 0 && kmAkhir < kmAwal) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'KM akhir tidak boleh kurang dari KM awal.',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-                        }
-                      }
-
-                      DateTime? date;
-                      try {
-                        date = DateFormat(
-                          'dd/MM/yyyy',
-                        ).parse(_dateController.text);
-                      } catch (e) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Format tanggal tidak valid.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                        return;
-                      }
-
-                      final newReimburse = ReimburseCreateModel(
-                        salesId: auth.user!.id!,
-                        type: _selectedType,
-                        date: date!,
-                        unitBusinessId: auth.unitBusinessId ?? "",
-                        total: double.tryParse(_amountController.text) ?? 0,
-                        kmAwal: double.tryParse(_startKmController.text) ?? 0,
-                        kmAkhir: double.tryParse(_endKmController.text) ?? 0,
-                        note: _noteController.text,
-                        fotoAwal: "",
-                        fotoAkhir: "",
-                        approvalCount: 0,
-                        approvedCount: 0,
-                        approvalLevel: 1,
-                        status: isApproval ? "DRAFT" : "DRAFT",
-                      );
-
-                      final navigator = Navigator.of(context);
-                      final messenger = ScaffoldMessenger.of(context);
-
-                      bool operationSuccess = false;
-                      String? reimburseIdForApproval;
-
-                      if (widget.isEdit) {
-                        final existingItem = provider.selected!;
-                        final updatedReimburse = ReimburseCreateModel(
-                          salesId: newReimburse.salesId,
-                          type: newReimburse.type,
-                          date: newReimburse.date,
-                          unitBusinessId: newReimburse.unitBusinessId,
-                          total: double.tryParse(_amountController.text) ?? 0,
-                          kmAwal: newReimburse.kmAwal,
-                          kmAkhir: newReimburse.kmAkhir,
-                          note: newReimburse.note,
-                          fotoAwal: _pickedFotoAwal != null
-                              ? ""
-                              : existingItem.fotoAwal ?? "",
-                          fotoAkhir: _pickedFotoAkhir != null
-                              ? ""
-                              : existingItem.fotoAkhir ?? "",
-                          approvalCount: newReimburse.approvalCount,
-                          approvedCount: newReimburse.approvedCount,
-                          approvalLevel: newReimburse.approvalLevel,
-                          status: newReimburse.status,
-                        );
-
-                        operationSuccess = await provider.update(
-                          auth.token!,
-                          widget.reimburseId!,
-                          updatedReimburse,
-                          _pickedFotoAwal,
-                          _pickedFotoAkhir,
-                        );
-                        if (operationSuccess) {
-                          reimburseIdForApproval = widget.reimburseId!;
-                        }
-                      } else {
-                        final createdReimburse = await provider.create(
-                          auth.token!,
-                          newReimburse,
-                          _pickedFotoAwal,
-                          _pickedFotoAkhir,
-                        );
-                        if (createdReimburse != null) {
-                          operationSuccess = true;
-                          reimburseIdForApproval = createdReimburse.id!;
-                        }
-                      }
-
-                      if (operationSuccess && reimburseIdForApproval != null) {
-                        if (isApproval) {
-                          final approvalSuccess = await provider
-                              .requestApproval(
-                                token: auth.token!,
-                                reimburseId: reimburseIdForApproval,
-                                userId: auth.user!.id,
-                              );
-
-                          if (approvalSuccess) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Reimburse berhasil diajukan untuk approval!',
-                                ),
-                                backgroundColor: Colors.green,
-                              ),
-                            );
-
-                            navigator.pushAndRemoveUntil(
-                              MaterialPageRoute(
-                                builder: (_) => const HomePage(),
-                              ),
-                              (_) => false,
-                            );
-                          } else {
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Gagal mengajukan approval reimburse: ${provider.error ?? "Terjadi kesalahan"}',
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        } else {
-                          // Not for approval, just save/update
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                widget.isEdit
-                                    ? 'Reimburse berhasil diperbarui!'
-                                    : 'Reimburse berhasil disimpan sebagai draft!',
-                              ),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-
-                          navigator.pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const HomePage()),
-                            (_) => false,
-                          );
-                        }
-                      } else if (context.mounted) {
-                        messenger.showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Gagal ${widget.isEdit ? 'memperbarui' : 'menyimpan'} reimburse: ${provider.error ?? "Terjadi kesalahan"}',
-                            ),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5D5FEF),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text(
-                      "Iya",
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

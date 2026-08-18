@@ -355,7 +355,6 @@ class _DetailReimburseContentState extends State<_DetailReimburseContent> {
                                 MaterialPageRoute(
                                   builder: (_) => EditReimbursePage(
                                     reimburseId: item.id,
-                                    isEdit: true,
                                   ),
                                 ),
                               );

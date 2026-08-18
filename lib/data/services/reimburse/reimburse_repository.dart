@@ -251,7 +251,10 @@ class ReimburseRepository {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Gagal update reimburse');
+      if (kDebugMode) {
+        print('Failed to update reimburse: ${response.statusCode} - ${response.body}');
+      }
+      throw Exception('Gagal update reimburse: ${response.body}');
     }
   }
 
