@@ -101,8 +101,8 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
       if (!mounted) return;
 
       // 2. Tentukan state halaman berdasarkan status DO
-      if (doDetail.status == 5) {
-        // Status 5: Sudah Check-in, masuk mode Check-out.
+      if (doDetail.statusPengiriman == 'In Progress') {
+        // Status "In Progress": Sudah Check-in, masuk mode Check-out.
         // Ambil data realisasi dari `t_surat_jalan_realisasis` yang di-include di getDetailDo
         final realisasiData = doDetail.rawRealisasi?.firstWhereOrNull(
           (realis) => realis['time_out'] == null,
@@ -123,15 +123,15 @@ class _DoCheckoutPageState extends State<DoCheckoutPage> {
             'Status DO adalah 5 (check-out) tapi data realisasi open tidak ditemukan di dalam DO.',
           );
         }
-      } else if (doDetail.status == 4) {
-        // Status 4: Belum Check-in, masuk mode Check-in
+      } else if (doDetail.statusPengiriman == 'Confirmed') {
+        // Status "Confirmed": Belum Check-in, masuk mode Check-in
         setState(() {
           _pageState = PageState.checkIn;
         });
       } else {
         // Status lain yang tidak terduga
         _setPageError(
-          'Status DO tidak valid untuk check-in/check-out (Status: ${doDetail.status}).',
+          'Status DO tidak valid untuk check-in/check-out (Status: ${doDetail.statusPengiriman}).',
         );
       }
     } catch (e) {

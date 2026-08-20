@@ -86,7 +86,8 @@ class DoRepository {
         ..fields['time_in'] = timeIn
         ..fields['lat_in'] = latIn
         ..fields['long_in'] = longIn
-        ..fields['address_in'] = addressIn;
+        ..fields['address_in'] = addressIn
+        ..fields['status_bongkar'] = "PROSES BONGKAR";
 
       if (dpRealisasiId != null) {
         request.fields['dp_realisasi'] = dpRealisasiId;
@@ -127,7 +128,7 @@ class DoRepository {
     // DO masuk = DO yang sudah dikonfirmasi (status 4).
     // Gunakan paginate=1 lalu baca pagination.total untuk jumlah sisa DO.
     final queryParams = <String, String>{
-      'filter_column_status': '4',
+      'filter_column_status_pengiriman': 'Confirmed',
       'filter_column_is_taken': 'true',
       'page': '1',
       'paginate': '1',
@@ -170,7 +171,7 @@ class DoRepository {
     // DO belum dikonfirmasi = status 2 (posted), belum diambil driver.
     // Paginate=1 lalu baca pagination.total untuk total sebenarnya.
     final queryParams = <String, String>{
-      'filter_column_status': '2',
+      'filter_column_status_pengiriman': 'Posted',
       'filter_column_si_used': 'false',
       'filter_column_is_taken': 'false',
       'page': '1',
@@ -304,9 +305,9 @@ class DoRepository {
     String? unitBussinessId,
   }) async {
     // Confirmed DO statuses: 4 (confirmed) / 5 (in progress).
-    for (final status in const ['4', '5']) {
+    for (final status in const ['Confirmed', 'In Progress']) {
       final queryParams = <String, String>{
-        'filter_column_status': status,
+        'filter_column_status_pengiriman': status,
         'filter_column_is_taken': 'true',
         'filter_column_taken_by': userId,
         'paginate': '1',
@@ -343,9 +344,9 @@ class DoRepository {
     String? unitBussinessId,
   }) async {
     // Outstanding: status 4 (confirmed) or 5 (checked-in customer, in progress).
-    for (final status in const ['4', '5']) {
+    for (final status in const ['Confirmed', 'In Progress']) {
       final queryParams = <String, String>{
-        'filter_column_status': status,
+        'filter_column_status_pengiriman': status,
         'filter_column_is_taken': 'true',
         'filter_column_taken_by': userId,
         'paginate': '1',
@@ -385,6 +386,7 @@ class DoRepository {
     required String longIn,
     required String addressIn,
     required File photo,
+    String? status_tracking,
   }) async {
     final today = _dateOnly(DateTime.now());
 
@@ -422,7 +424,7 @@ class DoRepository {
     request.fields['lat_in'] = latIn;
     request.fields['long_in'] = longIn;
     request.fields['address_in'] = addressIn;
-
+    request.fields['status_tracking'] = status_tracking ?? '';
     request.files.add(await http.MultipartFile.fromPath('foto_in', photo.path));
 
     final response = await request.send();
@@ -581,7 +583,7 @@ class DoRepository {
   }) async {
     try {
       final Map<String, String> queryParams = {
-        'filter_column_status': '2', // posted
+        'filter_column_status_pengiriman': 'Posted', // posted
         'filter_column_si_used': 'false',
         'filter_column_is_taken': 'false',
         'filter_column_driver_id': userId,
@@ -644,7 +646,7 @@ class DoRepository {
       // - Jika tidak ada status=4 -> tampilkan status=5
       Future<List<DeliveryOrderModel>> fetchByStatus(String status) async {
         final Map<String, String> queryParams = {
-          'filter_column_status': status,
+          'filter_column_status_pengiriman': status,
           'filter_column_is_taken': 'true',
           'filter_column_taken_by': userId,
           'page': page.toString(),
@@ -678,10 +680,10 @@ class DoRepository {
             .toList();
       }
 
-      final status4 = await fetchByStatus('4');
+      final status4 = await fetchByStatus('Confirmed');
       if (status4.isNotEmpty) return status4;
 
-      return await fetchByStatus('5');
+      return await fetchByStatus('In Progress');
     } catch (e) {
       throw Exception('Error getListDOSudahConfirm: $e');
     }
@@ -697,7 +699,7 @@ class DoRepository {
   }) async {
     try {
       final Map<String, String> queryParams = {
-        'filter_column_status': '3',
+        'filter_column_status_pengiriman': 'Received',
         'filter_column_is_taken': 'true',
         'filter_column_taken_by': userId,
         'page': page.toString(),
@@ -756,7 +758,7 @@ class DoRepository {
     Future<List<DeliveryOrderModel>> fetch(String status) async {
       final queryParams = <String, String>{
         'where': 'date=$today',
-        'filter_column_status': status,
+        'filter_column_status_pengiriman': status,
         'filter_column_is_taken': 'true',
         'filter_column_taken_by': userId,
         'paginate': '200',
@@ -970,6 +972,7 @@ class DoRepository {
         longIn: longIn,
         addressIn: addressIn,
         photo: photo,
+        status_tracking: "BERANGKAT", 
       );
     } catch (e) {
       throw Exception('Error checking in: $e');
@@ -1014,6 +1017,7 @@ class DoRepository {
       request.fields['long_out'] = longOut;
       request.fields['address_out'] = addressOut;
       request.fields['durasi'] = duration;
+      request.fields['status_tracking'] = "PULANG";
 
       request.files.add(
         await http.MultipartFile.fromPath('foto_out', photo.path),
@@ -1070,6 +1074,7 @@ class DoRepository {
     request.fields['long_out'] = longOut;
     request.fields['address_out'] = addressOut;
     request.fields['durasi'] = duration;
+    request.fields['status_bongkar'] = "BONGKAR SELESAI";
     if (note != null && note.trim().isNotEmpty) {
       request.fields['note'] = note.trim();
     }
@@ -1117,7 +1122,7 @@ class DoRepository {
   }) async {
     try {
       final queryParams = <String, String>{
-        'filter_column_status': status,
+        'filter_column_status_pengiriman': status,
         'filter_column_is_taken': 'true',
         'filter_column_taken_by': userId,
         'page': '1',
@@ -1153,11 +1158,11 @@ class DoRepository {
     required String userId,
     required String deliveryPlanId,
   }) async {
-    for (final status in const ['4', '5']) {
+    for (final status in const ['Confirmed', 'In Progress']) {
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
         queryParameters: {
           'where': 'delivery_plan_id=$deliveryPlanId',
-          'filter_column_status': status,
+          'filter_column_status_pengiriman': status,
           'filter_column_is_taken': 'true',
           'filter_column_taken_by': userId,
           'paginate': '1',
@@ -1190,7 +1195,7 @@ class DoRepository {
     final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan').replace(
       queryParameters: {
         'where': 'delivery_plan_id=$deliveryPlanId',
-        'filter_column_status': status,
+        'filter_column_status_pengiriman': status,
         'filter_column_is_taken': 'true',
         'filter_column_taken_by': userId,
         'paginate': '1',
@@ -1236,7 +1241,7 @@ class DoRepository {
   Future<void> updateDoStatus({
     required String token,
     required String doId,
-    required int status,
+    required String status,
   }) async {
     try {
       final uri = Uri.parse('$baseUrl/dynamic/t_surat_jalan/$doId');
@@ -1250,7 +1255,7 @@ class DoRepository {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: json.encode({'status': status}),
+        body: json.encode({'status_pengiriman': status}),
       );
 
       print('Update Status Response Status: ${response.statusCode}');

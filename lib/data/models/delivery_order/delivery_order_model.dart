@@ -16,6 +16,7 @@ class DeliveryOrderModel {
   final String? vehicle;
   final String? nopol;
   final String? notes;
+  final String? statusPengiriman;
   final List<DeliveryOrderDetail> details;
   final SalesOrderModel? salesOrder;
   final List<Map<String, dynamic>>? rawRealisasi;
@@ -42,6 +43,7 @@ class DeliveryOrderModel {
     this.salesOrder,
     this.tSuratJalanRealisasi,
     this.rawRealisasi,
+    this.statusPengiriman,
   });
 
   factory DeliveryOrderModel.fromJson(Map<String, dynamic> json) {
@@ -65,6 +67,7 @@ class DeliveryOrderModel {
       vehicle: json['vehicle'],
       nopol: json['nopol'],
       notes: json['notes'],
+      statusPengiriman: json['status_pengiriman'],
       details: (json['t_surat_jalan_ds'] as List? ?? [])
           .map((e) => DeliveryOrderDetail.fromJson(e))
           .toList(),

@@ -364,7 +364,7 @@ class DoProvider extends ChangeNotifier {
       await _repository.confirmDo(token: token, doIds: doIds, userId: userId);
       // After confirm, DO status becomes 4 (confirmed).
       // Status 5 is only when the DO/customer is checked-in.
-      const toStatus = 4;
+      const toStatus = "Confirmed";
       for (final doId in doIds) {
         await _repository.updateDoStatus(
           token: token,
@@ -580,7 +580,7 @@ class DoProvider extends ChangeNotifier {
           addressIn: addressIn,
           photo: photo,
         );
-        await _repository.updateDoStatus(token: token, doId: doId, status: 5);
+        await _repository.updateDoStatus(token: token, doId: doId, status: "In Progress");
       }
 
       await checkOpenTimeIn(token: token, userId: userId);
@@ -631,51 +631,51 @@ class DoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> checkOutCustomerDos({
-    required String token,
-    required List<String> doIds,
-    required String userId,
-    required String timeOut,
-    required String latOut,
-    required String longOut,
-    required String addressOut,
-    required String duration,
-    required File photo,
-  }) async {
-    final open = await _repository.checkOpenTimeInSuratJalan(token: token);
-    final data = (open['data'] as List?)?.cast<dynamic>() ?? [];
+  // Future<void> checkOutCustomerDos({
+  //   required String token,
+  //   required List<String> doIds,
+  //   required String userId,
+  //   required String timeOut,
+  //   required String latOut,
+  //   required String longOut,
+  //   required String addressOut,
+  //   required String duration,
+  //   required File photo,
+  // }) async {
+  //   final open = await _repository.checkOpenTimeInSuratJalan(token: token);
+  //   final data = (open['data'] as List?)?.cast<dynamic>() ?? [];
 
-    String? findRealisasiId(String doId) {
-      for (final row in data) {
-        if (row is! Map) continue;
-        final sjId = row['t_surat_jalan_id']?.toString();
-        final timeOut = row['time_out'];
-        if (sjId == doId && (timeOut == null || timeOut.toString().isEmpty)) {
-          final id = row['id']?.toString();
-          if (id != null && id.isNotEmpty) return id;
-        }
-      }
-      return null;
-    }
+  //   String? findRealisasiId(String doId) {
+  //     for (final row in data) {
+  //       if (row is! Map) continue;
+  //       final sjId = row['t_surat_jalan_id']?.toString();
+  //       final timeOut = row['time_out'];
+  //       if (sjId == doId && (timeOut == null || timeOut.toString().isEmpty)) {
+  //         final id = row['id']?.toString();
+  //         if (id != null && id.isNotEmpty) return id;
+  //       }
+  //     }
+  //     return null;
+  //   }
 
-    for (final doId in doIds) {
-      final sjRealisasiId = findRealisasiId(doId);
-      if (sjRealisasiId == null) continue;
-      await _repository.checkOutSuratJalanRealisasi(
-        token: token,
-        realisasiId: sjRealisasiId,
-        suratJalanId: doId,
-        userId: userId,
-        timeOut: timeOut,
-        latOut: latOut,
-        longOut: longOut,
-        addressOut: addressOut,
-        duration: duration,
-        note: null,
-        photo: photo,
-      );
-    }
-  }
+  //   for (final doId in doIds) {
+  //     final sjRealisasiId = findRealisasiId(doId);
+  //     if (sjRealisasiId == null) continue;
+  //     await _repository.checkOutSuratJalanRealisasi(
+  //       token: token,
+  //       realisasiId: sjRealisasiId,
+  //       suratJalanId: doId,
+  //       userId: userId,
+  //       timeOut: timeOut,
+  //       latOut: latOut,
+  //       longOut: longOut,
+  //       addressOut: addressOut,
+  //       duration: duration,
+  //       note: null,
+  //       photo: photo,
+  //     );
+  //   }
+  // }
 
   Future<void> completeCustomerCheckout({
     required String token,
@@ -728,7 +728,7 @@ class DoProvider extends ChangeNotifier {
     // 2) Mark all DOs as completed:
     // - success => 3
     // - failed  => 6
-    final newStatus = isFailed ? 6 : 3;
+    final newStatus = isFailed ? "Failed" : "Received";
     for (final doId in doIds) {
       await _repository.updateDoStatus(
         token: token,
@@ -821,7 +821,7 @@ class DoProvider extends ChangeNotifier {
       );
 
       // 2. Update status DO menjadi 'dalam pengiriman' (status 5)
-      await _repository.updateDoStatus(token: token, doId: doId, status: 5);
+      await _repository.updateDoStatus(token: token, doId: doId, status: "In Progress");
 
       return sjRealisasi;
     } catch (e) {
@@ -834,7 +834,7 @@ class DoProvider extends ChangeNotifier {
   Future<void> updateDoStatus({
     required String token,
     required String doId,
-    required int status,
+    required String status,
   }) async {
     _isLoading = true;
     _error = null;
